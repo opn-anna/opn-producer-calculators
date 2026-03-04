@@ -334,6 +334,131 @@ a:focus-visible {
   color: #0b254f;
 }
 
+.cost-breakdown-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.cost-breakdown-subsection + .cost-breakdown-subsection {
+  margin-top: 0.95rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid #e6edf6;
+}
+
+.cost-breakdown-subtitle {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.cost-donut {
+  width: min(100%, 280px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  position: relative;
+}
+
+.cost-donut svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.cost-donut-track {
+  fill: none;
+  stroke: #e4ebf5;
+  stroke-width: 28;
+}
+
+.cost-donut-slice {
+  fill: none;
+  stroke-width: 28;
+  transform: rotate(-90deg);
+  transform-origin: 110px 110px;
+}
+
+.cost-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.cost-donut-center-label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.cost-donut-center-value {
+  margin: 0.18rem 0 0;
+  color: #0b254f;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.cost-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.cost-legend-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cost-legend-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.cost-legend-dot {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  flex: none;
+}
+
+.cost-legend-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.cost-legend-value {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cost-credits-divider {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #e6edf6;
+}
+
+.cost-credits-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.45rem;
+}
+
+.cost-credits-list .cost-legend-value {
+  color: #17663f;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -440,5 +565,17 @@ tbody tr:hover {
 
   .language-switch-label {
     font-size: 0.78rem;
+  }
+
+  .cost-donut {
+    width: min(100%, 240px);
+  }
+
+  .cost-donut-center-value {
+    font-size: 1.75rem;
+  }
+
+  .cost-legend-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

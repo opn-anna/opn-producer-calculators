@@ -29,6 +29,34 @@ const CATEGORY_TITLES = {
   other: "Other",
 };
 
+const BREAKDOWN_COLORS = {
+  brooding: "#9a59c7",
+  infrastructure: "#eb7e34",
+  distribution: "#23a2c9",
+  cartons: "#b88437",
+  feed: "#3e7f6b",
+  labor: "#f0b728",
+  feedPickup: "#8db89f",
+  stewHenCredit: "#bfd0c7",
+  chickPurchase: "#9a59c7",
+  fieldLabor: "#f0b728",
+  processingSentOut: "#3e7f6b",
+  processingDIY: "#23a2c9",
+};
+
+const BREAKDOWN_FALLBACK_COLORS = [
+  "#1d4ed8",
+  "#9333ea",
+  "#0891b2",
+  "#059669",
+  "#ca8a04",
+  "#dc2626",
+  "#ea580c",
+  "#7c3aed",
+];
+
+const BREAKDOWN_CREDIT_KEYS = new Set(["stewHenCredit"]);
+
 const LANGUAGE_STORAGE_KEY = "opn-calculator-language";
 const SUPPORTED_LANGUAGES = new Set(["en", "es"]);
 
@@ -208,6 +236,7 @@ const PHRASE_TRANSLATIONS_ES = {
   "Stocking Density / Acre": "Carga animal / acre",
   "Paddock Size with Moves": "Tamaño de potrero con movimientos",
   "Stocking Density with Moves": "Carga animal con movimientos",
+  "Total Cost": "Costo total",
   "Weighted Dry Matter %": "% de materia seca ponderado",
   "Total Dry Matter Needed / Day": "Materia seca total necesaria / día",
   Component: "Componente",
@@ -379,6 +408,12 @@ function formatMoney(value) {
   return `$${formatNumber(value, 2)}`;
 }
 
+function formatSignedMoney(value) {
+  const absoluteValue = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${formatNumber(absoluteValue, 2)}`;
+}
+
 function formatPercent(value) {
   return `${formatNumber(value * 100, 2)}%`;
 }
@@ -438,6 +473,173 @@ function renderTable(node, columns, rows) {
   table.append(tbody);
 
   node.append(table);
+}
+
+function createSvgNode(tagName) {
+  return document.createElementNS("http://www.w3.org/2000/svg", tagName);
+}
+
+function resolveBreakdownColor(key, index) {
+  return (
+    BREAKDOWN_COLORS[key] ??
+    BREAKDOWN_FALLBACK_COLORS[index % BREAKDOWN_FALLBACK_COLORS.length]
+  );
+}
+
+function buildBreakdownEntries(costBreakdown) {
+  return Object.entries(costBreakdown)
+    .map(([key, value], index) => {
+      const numericValue = Number(value);
+      const amount = Number.isFinite(numericValue) ? numericValue : 0;
+      const isCredit = BREAKDOWN_CREDIT_KEYS.has(key) || amount < 0;
+      const signedAmount = isCredit ? -Math.abs(amount) : amount;
+      return {
+        key,
+        label: translatePhrase(humanizeKey(key)),
+        signedAmount,
+        magnitude: Math.abs(signedAmount),
+        isCredit,
+        color: resolveBreakdownColor(key, index),
+      };
+    })
+    .filter((entry) => entry.magnitude > 0);
+}
+
+function createBreakdownLegendItem(entry, { signed = false } = {}) {
+  const row = document.createElement("div");
+  row.className = "cost-legend-item";
+
+  const labelWrap = document.createElement("div");
+  labelWrap.className = "cost-legend-label-wrap";
+
+  const dot = document.createElement("span");
+  dot.className = "cost-legend-dot";
+  dot.style.backgroundColor = entry.color;
+  labelWrap.append(dot);
+
+  const label = document.createElement("span");
+  label.className = "cost-legend-label";
+  label.textContent = entry.label;
+  labelWrap.append(label);
+
+  const amount = document.createElement("span");
+  amount.className = "cost-legend-value";
+  amount.textContent = signed
+    ? formatSignedMoney(entry.signedAmount)
+    : formatMoney(entry.signedAmount);
+
+  row.append(labelWrap, amount);
+  return row;
+}
+
+function renderCostBreakdownChart(node, { costBreakdown, totalCost }) {
+  clearNode(node);
+
+  const entries = buildBreakdownEntries(costBreakdown);
+  if (!entries.length) {
+    return;
+  }
+
+  const positiveEntries = entries.filter((entry) => !entry.isCredit);
+  const creditEntries = entries.filter((entry) => entry.isCredit);
+
+  const wrapper = document.createElement("section");
+  wrapper.className = "cost-breakdown-chart";
+
+  const donut = document.createElement("div");
+  donut.className = "cost-donut";
+
+  const svg = createSvgNode("svg");
+  svg.setAttribute("viewBox", "0 0 220 220");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", formatSignedMoney(totalCost));
+
+  const track = createSvgNode("circle");
+  track.classList.add("cost-donut-track");
+  track.setAttribute("cx", "110");
+  track.setAttribute("cy", "110");
+  track.setAttribute("r", "78");
+  svg.append(track);
+
+  const radius = 78;
+  const circumference = 2 * Math.PI * radius;
+  const positiveTotal = positiveEntries.reduce(
+    (sum, entry) => sum + entry.magnitude,
+    0,
+  );
+
+  let dashOffset = 0;
+  positiveEntries.forEach((entry) => {
+    if (positiveTotal <= 0) {
+      return;
+    }
+    const ratio = entry.magnitude / positiveTotal;
+    const dashLength = ratio * circumference;
+    const slice = createSvgNode("circle");
+    slice.classList.add("cost-donut-slice");
+    slice.setAttribute("cx", "110");
+    slice.setAttribute("cy", "110");
+    slice.setAttribute("r", String(radius));
+    slice.setAttribute("stroke", entry.color);
+    slice.setAttribute(
+      "stroke-dasharray",
+      `${dashLength} ${circumference - dashLength}`,
+    );
+    slice.setAttribute("stroke-dashoffset", String(-dashOffset));
+    svg.append(slice);
+    dashOffset += dashLength;
+  });
+
+  donut.append(svg);
+
+  const center = document.createElement("div");
+  center.className = "cost-donut-center";
+
+  const centerLabel = document.createElement("p");
+  centerLabel.className = "cost-donut-center-label";
+  centerLabel.textContent = translatePhrase("Total Cost");
+
+  const centerValue = document.createElement("p");
+  centerValue.className = "cost-donut-center-value";
+  centerValue.textContent = formatMoney(totalCost);
+
+  center.append(centerLabel, centerValue);
+  donut.append(center);
+  wrapper.append(donut);
+
+  const legend = document.createElement("div");
+  legend.className = "cost-legend-grid";
+  positiveEntries.forEach((entry) => {
+    legend.append(createBreakdownLegendItem(entry));
+  });
+  wrapper.append(legend);
+
+  if (creditEntries.length > 0) {
+    const divider = document.createElement("hr");
+    divider.className = "cost-credits-divider";
+    wrapper.append(divider);
+
+    const credits = document.createElement("div");
+    credits.className = "cost-credits-list";
+    creditEntries.forEach((entry) => {
+      credits.append(createBreakdownLegendItem(entry, { signed: true }));
+    });
+    wrapper.append(credits);
+  }
+
+  node.append(wrapper);
+}
+
+function createMeatCostBreakdown(costBreakdown, processingKey) {
+  return {
+    chickPurchase: costBreakdown.chickPurchase ?? 0,
+    brooding: costBreakdown.brooding ?? 0,
+    feed: costBreakdown.feed ?? 0,
+    infrastructure: costBreakdown.infrastructure ?? 0,
+    fieldLabor: costBreakdown.fieldLabor ?? 0,
+    feedPickup: costBreakdown.feedPickup ?? 0,
+    [processingKey]: costBreakdown[processingKey] ?? 0,
+  };
 }
 
 function createNumberField(field, currentValue, onChange) {
@@ -590,19 +792,10 @@ function initEggPage() {
       },
     ]);
 
-    const rows = Object.entries(result.costBreakdown).map(([key, value]) => ({
-      component: translatePhrase(humanizeKey(key)),
-      amount: formatMoney(value),
-    }));
-
-    renderTable(
-      breakdownNode,
-      [
-        { key: "component", label: translatePhrase("Component") },
-        { key: "amount", label: translatePhrase("Amount") },
-      ],
-      rows,
-    );
+    renderCostBreakdownChart(breakdownNode, {
+      costBreakdown: result.costBreakdown,
+      totalCost: result.costPerDozen,
+    });
   }
 
   function updateField(key, value) {
@@ -666,19 +859,47 @@ function initMeatPage() {
       },
     ]);
 
-    const rows = Object.entries(result.costBreakdown).map(([key, value]) => ({
-      component: translatePhrase(humanizeKey(key)),
-      amount: formatMoney(value),
-    }));
+    clearNode(breakdownNode);
 
-    renderTable(
-      breakdownNode,
-      [
-        { key: "component", label: translatePhrase("Component") },
-        { key: "amount", label: translatePhrase("Amount") },
-      ],
-      rows,
-    );
+    const sentOutSection = document.createElement("section");
+    sentOutSection.className = "cost-breakdown-subsection";
+
+    const sentOutTitle = document.createElement("h4");
+    sentOutTitle.className = "cost-breakdown-subtitle";
+    sentOutTitle.textContent = translatePhrase("Processing Sent Out");
+    sentOutSection.append(sentOutTitle);
+
+    const sentOutChartNode = document.createElement("div");
+    sentOutSection.append(sentOutChartNode);
+
+    renderCostBreakdownChart(sentOutChartNode, {
+      costBreakdown: createMeatCostBreakdown(
+        result.costBreakdown,
+        "processingSentOut",
+      ),
+      totalCost: result.totalCostPerBirdSentOut,
+    });
+    breakdownNode.append(sentOutSection);
+
+    const diySection = document.createElement("section");
+    diySection.className = "cost-breakdown-subsection";
+
+    const diyTitle = document.createElement("h4");
+    diyTitle.className = "cost-breakdown-subtitle";
+    diyTitle.textContent = translatePhrase("Processing DIY");
+    diySection.append(diyTitle);
+
+    const diyChartNode = document.createElement("div");
+    diySection.append(diyChartNode);
+
+    renderCostBreakdownChart(diyChartNode, {
+      costBreakdown: createMeatCostBreakdown(
+        result.costBreakdown,
+        "processingDIY",
+      ),
+      totalCost: result.totalCostPerBirdDIY,
+    });
+    breakdownNode.append(diySection);
   }
 
   function updateField(key, value) {
