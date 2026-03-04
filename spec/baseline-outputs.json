@@ -1,0 +1,110 @@
+{
+  "egg": {
+    "pricePerDozen": 10.405411929824561,
+    "costPerDozen": 5.202705964912281,
+    "profitPerDozen": 5.202705964912281,
+    "averageDozenPerHenPerYear": 16.875,
+    "totalEggsPerHen": 405,
+    "costBreakdown": {
+      "brooding": 0.5740244834307993,
+      "feed": 1.6222222222222222,
+      "infrastructure": 0.08296296296296296,
+      "labor": 1.7303703703703703,
+      "distribution": 0.9244444444444444,
+      "feedPickup": 0.16497777777777778,
+      "cartons": 0.4,
+      "stewHenCredit": 0.2962962962962963
+    }
+  },
+  "meat": {
+    "pricePerPoundSentOut": 7.040994683635746,
+    "pricePerPoundDIY": 5.283957646598709,
+    "costPerPoundSentOut": 3.520497341817873,
+    "costPerPoundDIY": 2.6419788232993544,
+    "totalCostPerBirdSentOut": 15.842238038180428,
+    "totalCostPerBirdDIY": 11.888904704847095,
+    "costBreakdown": {
+      "chickPurchase": 3.105263157894737,
+      "brooding": 0.81,
+      "feed": 0.95836376917458,
+      "infrastructure": 0.3402777777777778,
+      "fieldLabor": 2.625,
+      "processingSentOut": 7.263333333333334,
+      "processingDIY": 3.31,
+      "feedPickup": 0.74
+    }
+  },
+  "stockSingle": {
+    "forageLbsPerAcre": 2000,
+    "totalAnimalWeight": 17600,
+    "dryMatterPercent": 0.025,
+    "dryMatterNeededPerDay": 440,
+    "dryMatterAvailable": 1000,
+    "acresNeededPerDay": 0.44,
+    "squareFeet": 19166.4,
+    "paddockWidth": 383.32800000000003,
+    "stockingDensityPerAcre": 40000,
+    "paddockSizeWithMoves": 0.44,
+    "stockingDensityWithMoves": 40000
+  },
+  "stockMixed": {
+    "forageLbsPerAcre": 1400,
+    "totalAnimalWeight": 7500,
+    "weightedDryMatterPercent": 0.027666666666666666,
+    "totalDryMatterNeeded": 207.5,
+    "dryMatterAvailable": 700,
+    "acresNeededPerDay": 0.29642857142857143,
+    "squareFeet": 12912.42857142857,
+    "paddockWidth": 807.0267857142857,
+    "stockingDensityPerAcre": 25301.204819277107,
+    "paddockSizeWithMoves": 0.29642857142857143,
+    "stockingDensityWithMoves": 25301.204819277107,
+    "animalBreakdown": [
+      {
+        "class": "stocker_cattle",
+        "label": "Stocker Cattle",
+        "numberOfHead": 4,
+        "averageWeight": 750,
+        "totalWeight": 3000,
+        "dryMatterPercent": 0.025,
+        "dryMatterNeeded": 75
+      },
+      {
+        "class": "dry_cow",
+        "label": "Dry Cow",
+        "numberOfHead": 0,
+        "averageWeight": 800,
+        "totalWeight": 0,
+        "dryMatterPercent": 0.03,
+        "dryMatterNeeded": 0
+      },
+      {
+        "class": "lactating_cow",
+        "label": "Lactating Cow",
+        "numberOfHead": 2,
+        "averageWeight": 1000,
+        "totalWeight": 2000,
+        "dryMatterPercent": 0.035,
+        "dryMatterNeeded": 70
+      },
+      {
+        "class": "sheep_goats",
+        "label": "Sheep/Goats",
+        "numberOfHead": 25,
+        "averageWeight": 100,
+        "totalWeight": 2500,
+        "dryMatterPercent": 0.025,
+        "dryMatterNeeded": 62.5
+      },
+      {
+        "class": "lactating_sheep",
+        "label": "Lactating Sheep",
+        "numberOfHead": 0,
+        "averageWeight": 120,
+        "totalWeight": 0,
+        "dryMatterPercent": 0.045,
+        "dryMatterNeeded": 0
+      }
+    ]
+  }
+}

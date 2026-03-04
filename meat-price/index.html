@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meat Chicken Price Calculator</title>
+    <meta
+      name="description"
+      content="Calculate the true cost of production for pasture-raised meat chickens."
+    />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body data-calculator="meat">
+    <header class="page-header">
+      <h1>Meat Chicken Price Calculator</h1>
+      <p>
+        Calculate the true cost of production to ensure sustainable pricing for
+        your pasture-raised meat chickens.
+      </p>
+      <nav class="page-nav">
+        <a href="/egg-price/">Egg Price</a>
+        <a href="/meat-price/">Meat Chicken Price</a>
+        <a href="/stock-density/">Stock Density</a>
+      </nav>
+    </header>
+    <main class="layout">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Inputs</h2>
+          <button id="reset-defaults" type="button">Reset to defaults</button>
+        </div>
+        <div id="fields"></div>
+      </section>
+      <section class="panel">
+        <h2>Outputs</h2>
+        <div id="summary"></div>
+        <h3>Cost Breakdown (per bird)</h3>
+        <div id="breakdown"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/app.mjs"></script>
+  </body>
+</html>
