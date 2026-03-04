@@ -3,29 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Producer Calculators</title>
-    <meta name="description" content="Choose a calculator." />
+    <title data-i18n="meta.home.title">Producer Calculators</title>
+    <meta
+      name="description"
+      content="Choose a calculator."
+      data-i18n-content="meta.home.description"
+    />
     <link rel="stylesheet" href="/app.css" />
   </head>
-  <body>
+  <body data-page="home">
     <header class="page-header">
-      <h1>Producer Calculators</h1>
-      <p>Choose a calculator.</p>
+      <h1 data-i18n="page.home.title">Producer Calculators</h1>
+      <p data-i18n="page.home.description">Choose a calculator.</p>
       <nav class="page-nav">
-        <a href="/egg-price/">Egg Price</a>
-        <a href="/meat-price/">Meat Chicken Price</a>
-        <a href="/stock-density/">Stock Density</a>
+        <a href="/" data-i18n="nav.home">Home</a>
+        <a href="/egg-price/" data-i18n="nav.egg">Egg Price</a>
+        <a href="/meat-price/" data-i18n="nav.meat">Meat Chicken Price</a>
+        <a href="/stock-density/" data-i18n="nav.stock">Stock Density</a>
       </nav>
+      <div class="language-switch">
+        <span class="language-switch-label" data-i18n="language.label"
+          >Language</span
+        >
+        <div class="language-switch-options" role="group" data-language-group>
+          <button type="button" data-language-option="en">EN</button>
+          <button type="button" data-language-option="es">ES</button>
+        </div>
+      </div>
     </header>
     <main class="layout landing-layout">
       <section class="panel">
-        <h2>Calculators</h2>
+        <h2 data-i18n="home.calculators.heading">Calculators</h2>
         <ul class="calculator-links">
-          <li><a href="/egg-price/">Egg Price Calculator</a></li>
-          <li><a href="/meat-price/">Meat Chicken Price Calculator</a></li>
-          <li><a href="/stock-density/">Stock Density Calculator</a></li>
+          <li>
+            <a href="/egg-price/" data-i18n="home.calculators.egg"
+              >Egg Price Calculator</a
+            >
+          </li>
+          <li>
+            <a href="/meat-price/" data-i18n="home.calculators.meat"
+              >Meat Chicken Price Calculator</a
+            >
+          </li>
+          <li>
+            <a href="/stock-density/" data-i18n="home.calculators.stock"
+              >Stock Density Calculator</a
+            >
+          </li>
         </ul>
       </section>
     </main>
+    <script type="module" src="/src/app.mjs"></script>
   </body>
 </html>

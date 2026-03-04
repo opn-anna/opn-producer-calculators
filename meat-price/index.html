@@ -3,38 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Meat Chicken Price Calculator</title>
+    <title data-i18n="meta.meat.title">Meat Chicken Price Calculator</title>
     <meta
       name="description"
       content="Calculate the true cost of production for pasture-raised meat chickens."
+      data-i18n-content="meta.meat.description"
     />
     <link rel="stylesheet" href="/app.css" />
   </head>
-  <body data-calculator="meat">
+  <body data-calculator="meat" data-page="meat">
     <header class="page-header">
-      <h1>Meat Chicken Price Calculator</h1>
-      <p>
+      <h1 data-i18n="page.meat.title">Meat Chicken Price Calculator</h1>
+      <p data-i18n="page.meat.description">
         Calculate the true cost of production to ensure sustainable pricing for
         your pasture-raised meat chickens.
       </p>
       <nav class="page-nav">
-        <a href="/egg-price/">Egg Price</a>
-        <a href="/meat-price/">Meat Chicken Price</a>
-        <a href="/stock-density/">Stock Density</a>
+        <a href="/" data-i18n="nav.home">Home</a>
+        <a href="/egg-price/" data-i18n="nav.egg">Egg Price</a>
+        <a href="/meat-price/" data-i18n="nav.meat">Meat Chicken Price</a>
+        <a href="/stock-density/" data-i18n="nav.stock">Stock Density</a>
       </nav>
+      <div class="language-switch">
+        <span class="language-switch-label" data-i18n="language.label"
+          >Language</span
+        >
+        <div class="language-switch-options" role="group" data-language-group>
+          <button type="button" data-language-option="en">EN</button>
+          <button type="button" data-language-option="es">ES</button>
+        </div>
+      </div>
     </header>
     <main class="layout">
       <section class="panel">
         <div class="panel-header">
-          <h2>Inputs</h2>
-          <button id="reset-defaults" type="button">Reset to defaults</button>
+          <h2 data-i18n="common.inputs">Inputs</h2>
+          <button id="reset-defaults" type="button" data-i18n="common.reset">
+            Reset to defaults
+          </button>
         </div>
         <div id="fields"></div>
       </section>
       <section class="panel">
-        <h2>Outputs</h2>
-        <div id="summary"></div>
-        <h3>Cost Breakdown (per bird)</h3>
+        <h2 data-i18n="common.outputs">Outputs</h2>
+        <div id="summary" aria-live="polite"></div>
+        <h3 data-i18n="meat.breakdown.heading">Cost Breakdown (per bird)</h3>
         <div id="breakdown"></div>
       </section>
     </main>

@@ -29,6 +29,348 @@ const CATEGORY_TITLES = {
   other: "Other",
 };
 
+const LANGUAGE_STORAGE_KEY = "opn-calculator-language";
+const SUPPORTED_LANGUAGES = new Set(["en", "es"]);
+
+const STATIC_TRANSLATIONS = {
+  en: {
+    "meta.home.title": "Producer Calculators",
+    "meta.home.description": "Choose a calculator.",
+    "page.home.title": "Producer Calculators",
+    "page.home.description": "Choose a calculator.",
+    "nav.home": "Home",
+    "nav.egg": "Egg Price",
+    "nav.meat": "Meat Chicken Price",
+    "nav.stock": "Stock Density",
+    "language.label": "Language",
+    "home.calculators.heading": "Calculators",
+    "home.calculators.egg": "Egg Price Calculator",
+    "home.calculators.meat": "Meat Chicken Price Calculator",
+    "home.calculators.stock": "Stock Density Calculator",
+    "meta.egg.title": "Egg Price Calculator",
+    "meta.egg.description": "Calculate egg pricing from production inputs.",
+    "page.egg.title": "Egg Price Calculator",
+    "page.egg.description": "Calculate egg pricing from production inputs.",
+    "common.inputs": "Inputs",
+    "common.reset": "Reset to defaults",
+    "common.outputs": "Outputs",
+    "egg.breakdown.heading": "Cost Breakdown (per dozen)",
+    "meta.meat.title": "Meat Chicken Price Calculator",
+    "meta.meat.description":
+      "Calculate the true cost of production for pasture-raised meat chickens.",
+    "page.meat.title": "Meat Chicken Price Calculator",
+    "page.meat.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised meat chickens.",
+    "meat.breakdown.heading": "Cost Breakdown (per bird)",
+    "meta.stock.title": "Stock Density Calculator",
+    "meta.stock.description":
+      "Calculate paddock sizing and stocking density based on forage and herd inputs.",
+    "page.stock.title": "Stock Density Calculator",
+    "page.stock.description":
+      "Calculate optimal stocking density for your pasture management.",
+    "stock.breakdown.heading": "Animal Breakdown",
+  },
+  es: {
+    "meta.home.title": "Calculadoras para productores",
+    "meta.home.description": "Elige una calculadora.",
+    "page.home.title": "Calculadoras para productores",
+    "page.home.description": "Elige una calculadora.",
+    "nav.home": "Inicio",
+    "nav.egg": "Precio de huevos",
+    "nav.meat": "Precio de pollo de engorde",
+    "nav.stock": "Carga animal",
+    "language.label": "Idioma",
+    "home.calculators.heading": "Calculadoras",
+    "home.calculators.egg": "Calculadora de precio de huevos",
+    "home.calculators.meat": "Calculadora de precio de pollo de engorde",
+    "home.calculators.stock": "Calculadora de carga animal",
+    "meta.egg.title": "Calculadora de precio de huevos",
+    "meta.egg.description":
+      "Calcula el precio del huevo a partir de los insumos de producción.",
+    "page.egg.title": "Calculadora de precio de huevos",
+    "page.egg.description":
+      "Calcula el precio del huevo a partir de los insumos de producción.",
+    "common.inputs": "Entradas",
+    "common.reset": "Restablecer valores",
+    "common.outputs": "Resultados",
+    "egg.breakdown.heading": "Desglose de costos (por docena)",
+    "meta.meat.title": "Calculadora de precio de pollo de engorde",
+    "meta.meat.description":
+      "Calcula el costo real de producción para pollos de engorde en pastoreo.",
+    "page.meat.title": "Calculadora de precio de pollo de engorde",
+    "page.meat.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus pollos de engorde en pastoreo.",
+    "meat.breakdown.heading": "Desglose de costos (por ave)",
+    "meta.stock.title": "Calculadora de carga animal",
+    "meta.stock.description":
+      "Calcula el tamaño de potreros y la carga animal según forraje y rodeo.",
+    "page.stock.title": "Calculadora de carga animal",
+    "page.stock.description":
+      "Calcula la carga animal óptima para el manejo de tus pasturas.",
+    "stock.breakdown.heading": "Desglose por animal",
+  },
+};
+
+const PHRASE_TRANSLATIONS_ES = {
+  "Labor & General": "Mano de obra y general",
+  Chicks: "Pollitos",
+  Brooding: "Crianza",
+  Laying: "Postura",
+  Infrastructure: "Infraestructura",
+  Distribution: "Distribución",
+  Culling: "Descarte",
+  "Chick Purchase": "Compra de pollitos",
+  Feed: "Alimento",
+  "Field Labor": "Trabajo en campo",
+  "Processing (Sent Out)": "Procesamiento (externo)",
+  "Processing (DIY)": "Procesamiento (propio)",
+  Other: "Otros",
+  "Labor Rate": "Tarifa de mano de obra",
+  "Desired Gross Margin": "Margen bruto deseado",
+  "Chicks Purchased": "Pollitos comprados",
+  "Total Cost of Chicks": "Costo total de pollitos",
+  "Chick Mortality Rate": "Tasa de mortalidad de pollitos",
+  "Brooding Hours per Day": "Horas de crianza por día",
+  "Total Brooding Days": "Días totales de crianza",
+  "Starter Feed Cost": "Costo del alimento iniciador",
+  "Starter Feed Unit Size": "Tamaño de unidad del alimento iniciador",
+  "Size of Flock": "Tamaño del lote",
+  "Feed per Bird per Day": "Alimento por ave por día",
+  "Feed Price per Unit": "Precio del alimento por unidad",
+  "Feed Unit Size": "Tamaño de unidad del alimento",
+  "Expected Lay Rate (Year 1)": "Tasa de postura esperada (año 1)",
+  "Years to Keep Hens": "Años para mantener gallinas",
+  "Laying Labor Hours per Day": "Horas de trabajo de postura por día",
+  "Building Materials Cost": "Costo de materiales de construcción",
+  "Annual Repairs": "Reparaciones anuales",
+  "Infrastructure Lifespan": "Vida útil de infraestructura",
+  "Miles per Delivery": "Millas por entrega",
+  "Deliveries per Year": "Entregas por año",
+  "Cost per Mile": "Costo por milla",
+  "Labor Hours per Delivery": "Horas de mano de obra por entrega",
+  "Egg Carton Cost": "Costo del cartón de huevos",
+  "Feed Pickup Hours per Trip": "Horas de recogida de alimento por viaje",
+  "Feed Pickup Trips per Year": "Viajes de recogida de alimento por año",
+  "Feed Pickup Mileage": "Millaje de recogida de alimento",
+  "Net Value per Stew Hen": "Valor neto por gallina de descarte",
+  "Total Cost of Chicks (incl. Shipping)":
+    "Costo total de pollitos (incluye envío)",
+  "Bedding Cost per Unit": "Costo de cama por unidad",
+  "Bedding Units per Batch": "Unidades de cama por lote",
+  "Annual Feed Cost": "Costo anual de alimento",
+  "Birds Finished Annually": "Aves terminadas al año",
+  "Feed Pickup Travel Time": "Tiempo de traslado para recoger alimento",
+  "Feed Pickup Trips per Batch": "Viajes de recogida de alimento por lote",
+  "Feed Pickup Round Trip Miles": "Millas ida y vuelta para recoger alimento",
+  "IRS Mileage Rate": "Tarifa de millaje del IRS",
+  "Chicken Tractor Materials Cost": "Costo de materiales del tractor de pollos",
+  "Annual Repair Cost": "Costo anual de reparación",
+  "Tractor Lifespan": "Vida útil del tractor",
+  "Birds per Tractor per Batch": "Aves por tractor por lote",
+  "Batches per Year per Tractor": "Lotes por año por tractor",
+  "Days in Field per Batch": "Días en campo por lote",
+  "Field Labor Hours per Day": "Horas de trabajo en campo por día",
+  "Processing Total Cost": "Costo total de procesamiento",
+  "Birds Processed": "Aves procesadas",
+  "Processor Travel Time": "Tiempo de traslado al procesador",
+  "Processor Round Trip Mileage": "Millaje ida y vuelta al procesador",
+  "Equipment Cost": "Costo del equipo",
+  "Equipment Lifespan": "Vida útil del equipo",
+  "Birds Processed per Year": "Aves procesadas por año",
+  "Processing Crew Size": "Tamaño del equipo de procesamiento",
+  "Hours per Person on Processing Day":
+    "Horas por persona el día de procesamiento",
+  "Birds Processed per Day": "Aves procesadas por día",
+  "Packaging Cost per Bag": "Costo de empaque por bolsa",
+  "Label Cost Each": "Costo por etiqueta",
+  "Propane Cost per Batch": "Costo de propano por lote",
+  "Average Dressed Weight": "Peso canal promedio",
+  "Recommended Price / Dozen": "Precio recomendado / docena",
+  "Cost / Dozen": "Costo / docena",
+  "Profit / Dozen": "Ganancia / docena",
+  "Average Dozen / Hen / Year": "Docenas promedio / gallina / año",
+  "Total Eggs / Hen": "Huevos totales / gallina",
+  "Annual Revenue / Hen": "Ingreso anual / gallina",
+  "Recommended Price / lb (Sent Out)": "Precio recomendado / lb (externo)",
+  "Recommended Price / lb (DIY)": "Precio recomendado / lb (propio)",
+  "Cost / lb (Sent Out)": "Costo / lb (externo)",
+  "Cost / lb (DIY)": "Costo / lb (propio)",
+  "Total Cost / Bird (Sent Out)": "Costo total / ave (externo)",
+  "Total Cost / Bird (DIY)": "Costo total / ave (propio)",
+  "Forage (lbs/acre)": "Forraje (lb/acre)",
+  "Total Animal Weight (lbs)": "Peso animal total (lb)",
+  "Dry Matter %": "% de materia seca",
+  "Dry Matter Needed / Day": "Materia seca necesaria / día",
+  "Dry Matter Available": "Materia seca disponible",
+  "Acres Needed / Day": "Acres necesarios / día",
+  "Square Feet": "Pies cuadrados",
+  "Paddock Width": "Ancho del potrero",
+  "Stocking Density / Acre": "Carga animal / acre",
+  "Paddock Size with Moves": "Tamaño de potrero con movimientos",
+  "Stocking Density with Moves": "Carga animal con movimientos",
+  "Weighted Dry Matter %": "% de materia seca ponderado",
+  "Total Dry Matter Needed / Day": "Materia seca total necesaria / día",
+  Component: "Componente",
+  Amount: "Monto",
+  Class: "Clase",
+  Head: "Cabezas",
+  "Avg Weight": "Peso prom.",
+  "Total Weight": "Peso total",
+  "Dry Matter Needed": "Materia seca necesaria",
+  Labor: "Mano de obra",
+  "Feed Pickup": "Recogida de alimento",
+  Cartons: "Cartones",
+  "Stew Hen Credit": "Crédito por gallina de descarte",
+  "Processing Sent Out": "Procesamiento externo",
+  "Processing DIY": "Procesamiento propio",
+  "Single Class": "Clase única",
+  "Mixed Herd": "Rodeo mixto",
+  "Animal Groups": "Grupos de animales",
+  "Average Forage Height": "Altura promedio del forraje",
+  "Ground Coverage Density": "Densidad de cobertura del suelo",
+  "Forage Utilization Goal": "Objetivo de utilización del forraje",
+  "Paddock Side Length": "Largo del lado del potrero",
+  "Paddock Moves per Day": "Movimientos de potrero por día",
+  "Number of Head": "Número de cabezas",
+  "Average Weight": "Peso promedio",
+  "Animal Class": "Clase animal",
+  "85-90% coverage": "85-90% cobertura",
+  "90-95% coverage": "90-95% cobertura",
+  "95%+ coverage": "95%+ cobertura",
+  "Stocker Cattle": "Novillos de engorde",
+  "Dry Cow": "Vaca seca",
+  "Lactating Cow": "Vaca lactante",
+  "Sheep/Goats": "Ovejas/Cabras",
+  "Lactating Sheep": "Oveja lactante",
+  "/hr": "/h",
+  hrs: "h",
+  days: "días",
+  years: "años",
+  yrs: "años",
+  each: "cada uno",
+  "Single class mode does not include an animal breakdown table.":
+    "El modo de clase única no incluye una tabla de desglose por animal.",
+};
+
+let currentLanguage = readStoredLanguage();
+const languageChangeListeners = new Set();
+let fieldIdCounter = 0;
+
+function normalizeLanguage(language) {
+  const candidate = String(language ?? "")
+    .trim()
+    .toLowerCase();
+  return SUPPORTED_LANGUAGES.has(candidate) ? candidate : "en";
+}
+
+function readStoredLanguage() {
+  try {
+    return normalizeLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY));
+  } catch (error) {
+    return "en";
+  }
+}
+
+function persistLanguage(language) {
+  try {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  } catch (error) {
+    // Ignore storage failures in private or restricted contexts.
+  }
+}
+
+function translateStatic(key, fallback = "") {
+  const localized = STATIC_TRANSLATIONS[currentLanguage]?.[key];
+  if (localized) {
+    return localized;
+  }
+  const english = STATIC_TRANSLATIONS.en[key];
+  return english ?? fallback;
+}
+
+function translatePhrase(phrase) {
+  if (currentLanguage === "es") {
+    return PHRASE_TRANSLATIONS_ES[phrase] ?? phrase;
+  }
+  return phrase;
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = currentLanguage;
+
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    const key = node.getAttribute("data-i18n");
+    if (!key) {
+      return;
+    }
+    node.textContent = translateStatic(key, node.textContent ?? "");
+  });
+
+  document.querySelectorAll("[data-i18n-content]").forEach((node) => {
+    const key = node.getAttribute("data-i18n-content");
+    if (!key) {
+      return;
+    }
+    const fallback = node.getAttribute("content") ?? "";
+    node.setAttribute("content", translateStatic(key, fallback));
+  });
+}
+
+function updateLanguageButtons() {
+  document.querySelectorAll("[data-language-option]").forEach((button) => {
+    const option = normalizeLanguage(
+      button.getAttribute("data-language-option"),
+    );
+    const isActive = option === currentLanguage;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function setLanguage(language, { persist = true, notify = true } = {}) {
+  currentLanguage = normalizeLanguage(language);
+  if (persist) {
+    persistLanguage(currentLanguage);
+  }
+  applyStaticTranslations();
+  updateLanguageButtons();
+  if (notify) {
+    languageChangeListeners.forEach((listener) => listener(currentLanguage));
+  }
+}
+
+function onLanguageChange(listener) {
+  languageChangeListeners.add(listener);
+  return () => languageChangeListeners.delete(listener);
+}
+
+function initLanguageControls() {
+  document.querySelectorAll("[data-language-option]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selectedLanguage = button.getAttribute("data-language-option");
+      setLanguage(selectedLanguage, { persist: true, notify: true });
+    });
+  });
+  setLanguage(currentLanguage, { persist: false, notify: false });
+}
+
+function createFieldId(key) {
+  const normalized = String(key)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  fieldIdCounter += 1;
+  return `${normalized || "field"}-${fieldIdCounter}`;
+}
+
+function humanizeKey(value) {
+  return String(value)
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function formatNumber(value, digits = 2) {
   return Number.isFinite(value) ? value.toFixed(digits) : "0.00";
 }
@@ -101,8 +443,10 @@ function renderTable(node, columns, rows) {
 function createNumberField(field, currentValue, onChange) {
   const row = document.createElement("div");
   row.className = "field";
+  const fieldId = createFieldId(field.key ?? "input");
 
   const label = document.createElement("label");
+  label.htmlFor = fieldId;
   label.textContent = field.label;
 
   const control = document.createElement("div");
@@ -116,7 +460,10 @@ function createNumberField(field, currentValue, onChange) {
   }
 
   const input = document.createElement("input");
+  input.id = fieldId;
+  input.name = field.key;
   input.type = "number";
+  input.inputMode = "decimal";
   input.min = String(field.min);
   input.max = String(field.max);
   input.step = String(field.step);
@@ -130,7 +477,7 @@ function createNumberField(field, currentValue, onChange) {
   if (field.suffix) {
     const suffix = document.createElement("span");
     suffix.className = "affix";
-    suffix.textContent = field.suffix;
+    suffix.textContent = translatePhrase(field.suffix);
     control.append(suffix);
   }
 
@@ -141,13 +488,16 @@ function createNumberField(field, currentValue, onChange) {
 function createSelectField({ label, options, value, onChange }) {
   const row = document.createElement("div");
   row.className = "field";
+  const fieldId = createFieldId(label);
 
   const labelNode = document.createElement("label");
+  labelNode.htmlFor = fieldId;
   labelNode.textContent = label;
 
   const control = document.createElement("div");
   control.className = "field-control";
   const select = document.createElement("select");
+  select.id = fieldId;
   options.forEach((option) => {
     const element = document.createElement("option");
     element.value = String(option.value);
@@ -179,12 +529,20 @@ function renderGroupedFields(node, fields, state, onUpdate) {
     section.className = "category";
 
     const title = document.createElement("h3");
-    title.textContent = CATEGORY_TITLES[category] ?? category;
+    title.textContent = translatePhrase(
+      CATEGORY_TITLES[category] ?? humanizeKey(category),
+    );
     section.append(title);
 
     categoryFields.forEach((field) => {
-      const row = createNumberField(field, state[field.key], (value) =>
-        onUpdate(field.key, value),
+      const translatedField = {
+        ...field,
+        label: translatePhrase(field.label),
+      };
+      const row = createNumberField(
+        translatedField,
+        state[field.key],
+        (value) => onUpdate(field.key, value),
       );
       section.append(row);
     });
@@ -205,21 +563,27 @@ function initEggPage() {
     const result = computeEggPricing(state);
     renderSummary(summaryNode, [
       {
-        label: "Recommended Price / Dozen",
+        label: translatePhrase("Recommended Price / Dozen"),
         value: formatMoney(result.pricePerDozen),
       },
-      { label: "Cost / Dozen", value: formatMoney(result.costPerDozen) },
-      { label: "Profit / Dozen", value: formatMoney(result.profitPerDozen) },
       {
-        label: "Average Dozen / Hen / Year",
+        label: translatePhrase("Cost / Dozen"),
+        value: formatMoney(result.costPerDozen),
+      },
+      {
+        label: translatePhrase("Profit / Dozen"),
+        value: formatMoney(result.profitPerDozen),
+      },
+      {
+        label: translatePhrase("Average Dozen / Hen / Year"),
         value: formatNumber(result.averageDozenPerHenPerYear, 2),
       },
       {
-        label: "Total Eggs / Hen",
+        label: translatePhrase("Total Eggs / Hen"),
         value: formatNumber(result.totalEggsPerHen, 0),
       },
       {
-        label: "Annual Revenue / Hen",
+        label: translatePhrase("Annual Revenue / Hen"),
         value: formatMoney(
           result.pricePerDozen * result.averageDozenPerHenPerYear,
         ),
@@ -227,15 +591,15 @@ function initEggPage() {
     ]);
 
     const rows = Object.entries(result.costBreakdown).map(([key, value]) => ({
-      component: key,
+      component: translatePhrase(humanizeKey(key)),
       amount: formatMoney(value),
     }));
 
     renderTable(
       breakdownNode,
       [
-        { key: "component", label: "Component" },
-        { key: "amount", label: "Amount" },
+        { key: "component", label: translatePhrase("Component") },
+        { key: "amount", label: translatePhrase("Amount") },
       ],
       rows,
     );
@@ -256,6 +620,11 @@ function initEggPage() {
     updateOutputs();
   });
 
+  onLanguageChange(() => {
+    buildForm();
+    updateOutputs();
+  });
+
   buildForm();
   updateOutputs();
 }
@@ -272,38 +641,41 @@ function initMeatPage() {
     const result = computeMeatPricing(state);
     renderSummary(summaryNode, [
       {
-        label: "Recommended Price / lb (Sent Out)",
+        label: translatePhrase("Recommended Price / lb (Sent Out)"),
         value: formatMoney(result.pricePerPoundSentOut),
       },
       {
-        label: "Recommended Price / lb (DIY)",
+        label: translatePhrase("Recommended Price / lb (DIY)"),
         value: formatMoney(result.pricePerPoundDIY),
       },
       {
-        label: "Cost / lb (Sent Out)",
+        label: translatePhrase("Cost / lb (Sent Out)"),
         value: formatMoney(result.costPerPoundSentOut),
       },
-      { label: "Cost / lb (DIY)", value: formatMoney(result.costPerPoundDIY) },
       {
-        label: "Total Cost / Bird (Sent Out)",
+        label: translatePhrase("Cost / lb (DIY)"),
+        value: formatMoney(result.costPerPoundDIY),
+      },
+      {
+        label: translatePhrase("Total Cost / Bird (Sent Out)"),
         value: formatMoney(result.totalCostPerBirdSentOut),
       },
       {
-        label: "Total Cost / Bird (DIY)",
+        label: translatePhrase("Total Cost / Bird (DIY)"),
         value: formatMoney(result.totalCostPerBirdDIY),
       },
     ]);
 
     const rows = Object.entries(result.costBreakdown).map(([key, value]) => ({
-      component: key,
+      component: translatePhrase(humanizeKey(key)),
       amount: formatMoney(value),
     }));
 
     renderTable(
       breakdownNode,
       [
-        { key: "component", label: "Component" },
-        { key: "amount", label: "Amount" },
+        { key: "component", label: translatePhrase("Component") },
+        { key: "amount", label: translatePhrase("Amount") },
       ],
       rows,
     );
@@ -320,6 +692,11 @@ function initMeatPage() {
 
   resetButton.addEventListener("click", () => {
     state = { ...MEAT_DEFAULTS };
+    buildForm();
+    updateOutputs();
+  });
+
+  onLanguageChange(() => {
     buildForm();
     updateOutputs();
   });
@@ -352,8 +729,8 @@ function initStockPage() {
     group.className = "radio-group";
 
     const modes = [
-      { value: "single", label: "Single Class" },
-      { value: "mixed", label: "Mixed Herd" },
+      { value: "single", label: translatePhrase("Single Class") },
+      { value: "mixed", label: translatePhrase("Mixed Herd") },
     ];
 
     modes.forEach((option) => {
@@ -384,7 +761,7 @@ function initStockPage() {
       createNumberField(
         {
           key: "forageHeight",
-          label: "Average Forage Height",
+          label: translatePhrase("Average Forage Height"),
           min: 1,
           max: 24,
           step: 0.5,
@@ -402,10 +779,13 @@ function initStockPage() {
 
     fieldsNode.append(
       createSelectField({
-        label: "Ground Coverage Density",
+        label: translatePhrase("Ground Coverage Density"),
         value: activeState.forageDensity,
         options: Object.entries(FORAGE_DENSITY_LEVELS).map(
-          ([value, config]) => ({ value, label: config.label }),
+          ([value, config]) => ({
+            value,
+            label: translatePhrase(config.label),
+          }),
         ),
         onChange: (value) => {
           if (mode === "single")
@@ -427,7 +807,7 @@ function initStockPage() {
       createNumberField(
         {
           key: "utilizationPercent",
-          label: "Forage Utilization Goal",
+          label: translatePhrase("Forage Utilization Goal"),
           min: 1,
           max: 100,
           step: 1,
@@ -447,7 +827,7 @@ function initStockPage() {
       createNumberField(
         {
           key: "paddockSideLength",
-          label: "Paddock Side Length",
+          label: translatePhrase("Paddock Side Length"),
           min: 1,
           max: 3000,
           step: 1,
@@ -467,7 +847,7 @@ function initStockPage() {
       createNumberField(
         {
           key: "movesPerDay",
-          label: "Paddock Moves per Day",
+          label: translatePhrase("Paddock Moves per Day"),
           min: 1,
           max: 24,
           step: 1,
@@ -487,7 +867,7 @@ function initStockPage() {
         createNumberField(
           {
             key: "numberOfHead",
-            label: "Number of Head",
+            label: translatePhrase("Number of Head"),
             min: 0,
             max: 50000,
             step: 1,
@@ -504,7 +884,7 @@ function initStockPage() {
         createNumberField(
           {
             key: "averageWeight",
-            label: "Average Weight",
+            label: translatePhrase("Average Weight"),
             min: 1,
             max: 5000,
             step: 1,
@@ -520,11 +900,11 @@ function initStockPage() {
 
       fieldsNode.append(
         createSelectField({
-          label: "Animal Class",
+          label: translatePhrase("Animal Class"),
           value: singleState.animalClass,
           options: Object.entries(ANIMAL_CLASSES).map(([value, details]) => ({
             value,
-            label: details.label,
+            label: translatePhrase(details.label),
           })),
           onChange: (value) => {
             singleState = { ...singleState, animalClass: value };
@@ -537,7 +917,7 @@ function initStockPage() {
       section.className = "category";
 
       const title = document.createElement("h3");
-      title.textContent = "Animal Groups";
+      title.textContent = translatePhrase("Animal Groups");
       section.append(title);
 
       Object.entries(ANIMAL_CLASSES).forEach(([animalClass, details]) => {
@@ -545,7 +925,9 @@ function initStockPage() {
           createNumberField(
             {
               key: `${animalClass}-head`,
-              label: `${details.label}: Number of Head`,
+              label: `${translatePhrase(details.label)}: ${translatePhrase(
+                "Number of Head",
+              )}`,
               min: 0,
               max: 50000,
               step: 1,
@@ -571,7 +953,9 @@ function initStockPage() {
           createNumberField(
             {
               key: `${animalClass}-weight`,
-              label: `${details.label}: Average Weight`,
+              label: `${translatePhrase(details.label)}: ${translatePhrase(
+                "Average Weight",
+              )}`,
               min: 1,
               max: 5000,
               step: 1,
@@ -604,89 +988,102 @@ function initStockPage() {
       const result = computeStockSingle(singleState);
       renderSummary(summaryNode, [
         {
-          label: "Forage (lbs/acre)",
+          label: translatePhrase("Forage (lbs/acre)"),
           value: formatNumber(result.forageLbsPerAcre, 2),
         },
         {
-          label: "Total Animal Weight (lbs)",
+          label: translatePhrase("Total Animal Weight (lbs)"),
           value: formatNumber(result.totalAnimalWeight, 2),
         },
         {
-          label: "Dry Matter %",
+          label: translatePhrase("Dry Matter %"),
           value: formatPercent(result.dryMatterPercent),
         },
         {
-          label: "Dry Matter Needed / Day",
+          label: translatePhrase("Dry Matter Needed / Day"),
           value: formatNumber(result.dryMatterNeededPerDay, 2),
         },
         {
-          label: "Dry Matter Available",
+          label: translatePhrase("Dry Matter Available"),
           value: formatNumber(result.dryMatterAvailable, 2),
         },
         {
-          label: "Acres Needed / Day",
+          label: translatePhrase("Acres Needed / Day"),
           value: formatNumber(result.acresNeededPerDay, 4),
         },
-        { label: "Square Feet", value: formatNumber(result.squareFeet, 2) },
-        { label: "Paddock Width", value: formatNumber(result.paddockWidth, 2) },
         {
-          label: "Stocking Density / Acre",
+          label: translatePhrase("Square Feet"),
+          value: formatNumber(result.squareFeet, 2),
+        },
+        {
+          label: translatePhrase("Paddock Width"),
+          value: formatNumber(result.paddockWidth, 2),
+        },
+        {
+          label: translatePhrase("Stocking Density / Acre"),
           value: formatNumber(result.stockingDensityPerAcre, 2),
         },
         {
-          label: "Paddock Size with Moves",
+          label: translatePhrase("Paddock Size with Moves"),
           value: formatNumber(result.paddockSizeWithMoves, 4),
         },
         {
-          label: "Stocking Density with Moves",
+          label: translatePhrase("Stocking Density with Moves"),
           value: formatNumber(result.stockingDensityWithMoves, 2),
         },
       ]);
 
       clearNode(breakdownNode);
       const note = document.createElement("p");
-      note.textContent =
-        "Single class mode does not include an animal breakdown table.";
+      note.textContent = translatePhrase(
+        "Single class mode does not include an animal breakdown table.",
+      );
       breakdownNode.append(note);
     } else {
       const result = computeStockMixed(mixedState);
       renderSummary(summaryNode, [
         {
-          label: "Forage (lbs/acre)",
+          label: translatePhrase("Forage (lbs/acre)"),
           value: formatNumber(result.forageLbsPerAcre, 2),
         },
         {
-          label: "Total Animal Weight (lbs)",
+          label: translatePhrase("Total Animal Weight (lbs)"),
           value: formatNumber(result.totalAnimalWeight, 2),
         },
         {
-          label: "Weighted Dry Matter %",
+          label: translatePhrase("Weighted Dry Matter %"),
           value: formatPercent(result.weightedDryMatterPercent),
         },
         {
-          label: "Total Dry Matter Needed / Day",
+          label: translatePhrase("Total Dry Matter Needed / Day"),
           value: formatNumber(result.totalDryMatterNeeded, 2),
         },
         {
-          label: "Dry Matter Available",
+          label: translatePhrase("Dry Matter Available"),
           value: formatNumber(result.dryMatterAvailable, 2),
         },
         {
-          label: "Acres Needed / Day",
+          label: translatePhrase("Acres Needed / Day"),
           value: formatNumber(result.acresNeededPerDay, 4),
         },
-        { label: "Square Feet", value: formatNumber(result.squareFeet, 2) },
-        { label: "Paddock Width", value: formatNumber(result.paddockWidth, 2) },
         {
-          label: "Stocking Density / Acre",
+          label: translatePhrase("Square Feet"),
+          value: formatNumber(result.squareFeet, 2),
+        },
+        {
+          label: translatePhrase("Paddock Width"),
+          value: formatNumber(result.paddockWidth, 2),
+        },
+        {
+          label: translatePhrase("Stocking Density / Acre"),
           value: formatNumber(result.stockingDensityPerAcre, 2),
         },
         {
-          label: "Paddock Size with Moves",
+          label: translatePhrase("Paddock Size with Moves"),
           value: formatNumber(result.paddockSizeWithMoves, 4),
         },
         {
-          label: "Stocking Density with Moves",
+          label: translatePhrase("Stocking Density with Moves"),
           value: formatNumber(result.stockingDensityWithMoves, 2),
         },
       ]);
@@ -694,15 +1091,18 @@ function initStockPage() {
       renderTable(
         breakdownNode,
         [
-          { key: "label", label: "Class" },
-          { key: "numberOfHead", label: "Head" },
-          { key: "averageWeight", label: "Avg Weight" },
-          { key: "totalWeight", label: "Total Weight" },
-          { key: "dryMatterPercent", label: "Dry Matter %" },
-          { key: "dryMatterNeeded", label: "Dry Matter Needed" },
+          { key: "label", label: translatePhrase("Class") },
+          { key: "numberOfHead", label: translatePhrase("Head") },
+          { key: "averageWeight", label: translatePhrase("Avg Weight") },
+          { key: "totalWeight", label: translatePhrase("Total Weight") },
+          { key: "dryMatterPercent", label: translatePhrase("Dry Matter %") },
+          {
+            key: "dryMatterNeeded",
+            label: translatePhrase("Dry Matter Needed"),
+          },
         ],
         result.animalBreakdown.map((row) => ({
-          label: row.label,
+          label: translatePhrase(row.label),
           numberOfHead: formatNumber(row.numberOfHead, 0),
           averageWeight: formatNumber(row.averageWeight, 0),
           totalWeight: formatNumber(row.totalWeight, 2),
@@ -722,10 +1122,18 @@ function initStockPage() {
     renderOutputs();
   });
 
+  onLanguageChange(() => {
+    renderModeToggle();
+    renderFields();
+    renderOutputs();
+  });
+
   renderModeToggle();
   renderFields();
   renderOutputs();
 }
+
+initLanguageControls();
 
 const page = document.body.dataset.calculator;
 if (page === "egg") {
