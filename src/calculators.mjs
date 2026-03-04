@@ -277,7 +277,10 @@ export const EGG_FIELDS = [
     step: 1,
     prefix: "$",
   },
-];
+].map((field) => ({
+  ...field,
+  control: field.control ?? "slider+number",
+}));
 
 export const MEAT_FIELDS = [
   {
@@ -632,7 +635,10 @@ export const MEAT_FIELDS = [
     step: 0.25,
     suffix: "lbs",
   },
-];
+].map((field) => ({
+  ...field,
+  control: field.control ?? "slider+number",
+}));
 
 function createDefaults(fields) {
   return Object.fromEntries(
@@ -667,6 +673,15 @@ export const STOCK_SINGLE_DEFAULTS = {
   paddockSideLength: 50,
   movesPerDay: 1,
 };
+
+export const STOCK_FIELD_CONTROLS = Object.freeze({
+  forageHeight: "slider+number",
+  utilizationPercent: "slider+number",
+  paddockSideLength: "slider+number",
+  movesPerDay: "slider+number",
+  numberOfHead: "slider+number",
+  averageWeight: "slider+number",
+});
 
 export const STOCK_MIXED_DEFAULTS = {
   forageHeight: 7,

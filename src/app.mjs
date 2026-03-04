@@ -7,6 +7,7 @@ import {
   ANIMAL_CLASSES,
   STOCK_SINGLE_DEFAULTS,
   STOCK_MIXED_DEFAULTS,
+  STOCK_FIELD_CONTROLS,
   computeEggPricing,
   computeMeatPricing,
   computeStockSingle,
@@ -277,6 +278,22 @@ const PHRASE_TRANSLATIONS_ES = {
   years: "años",
   yrs: "años",
   each: "cada uno",
+  "Show Cost Breakdown": "Mostrar desglose de costos",
+  "Hide Cost Breakdown": "Ocultar desglose de costos",
+  "Daily Paddock Size": "Tamaño diario del potrero",
+  acres: "acres",
+  "sq ft": "pies²",
+  "Forage Analysis": "Análisis de forraje",
+  "lbs/acre": "lb/acre",
+  "Herd Requirements": "Requerimientos del rodeo",
+  "Daily Dry Matter Need": "Necesidad diaria de materia seca",
+  lbs: "lb",
+  "Stocking Density": "Carga animal",
+  "Paddock Dimensions": "Dimensiones del potrero",
+  "ft (set)": "ft (definido)",
+  "ft (calculated)": "ft (calculado)",
+  "Production Summary": "Resumen de producción",
+  "Total Meat (Annual)": "Carne total (anual)",
   "Single class mode does not include an animal breakdown table.":
     "El modo de clase única no incluye una tabla de desglose por animal.",
 };
@@ -404,6 +421,16 @@ function formatNumber(value, digits = 2) {
   return Number.isFinite(value) ? value.toFixed(digits) : "0.00";
 }
 
+function formatGroupedNumber(value, digits = 0) {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+  return new Intl.NumberFormat(currentLanguage === "es" ? "es-ES" : "en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
 function formatMoney(value) {
   return `$${formatNumber(value, 2)}`;
 }
@@ -418,61 +445,45 @@ function formatPercent(value) {
   return `${formatNumber(value * 100, 2)}%`;
 }
 
+function countStepDecimals(step) {
+  const stepText = String(step ?? "");
+  if (!stepText.includes(".")) {
+    return 0;
+  }
+  return stepText.split(".")[1].length;
+}
+
+function normalizeFieldValue(field, rawValue, fallbackValue = 0) {
+  const parsedValue = Number.parseFloat(String(rawValue));
+  let nextValue = Number.isFinite(parsedValue) ? parsedValue : fallbackValue;
+  const minimum = Number(field.min);
+  const maximum = Number(field.max);
+  const step = Number(field.step);
+
+  if (Number.isFinite(minimum)) {
+    nextValue = Math.max(minimum, nextValue);
+  }
+
+  if (Number.isFinite(maximum)) {
+    nextValue = Math.min(maximum, nextValue);
+  }
+
+  if (Number.isFinite(step) && step > 0) {
+    const origin = Number.isFinite(minimum) ? minimum : 0;
+    const stepCount = Math.round((nextValue - origin) / step);
+    const steppedValue = origin + stepCount * step;
+    nextValue = Number(steppedValue.toFixed(countStepDecimals(step)));
+  }
+
+  return nextValue;
+}
+
+function getFieldControlMode(field) {
+  return field.control === "slider+number" ? "slider+number" : "number";
+}
+
 function clearNode(node) {
   node.innerHTML = "";
-}
-
-function renderSummary(node, metrics) {
-  clearNode(node);
-  const grid = document.createElement("div");
-  grid.className = "summary-grid";
-
-  metrics.forEach((metric) => {
-    const card = document.createElement("article");
-    card.className = "metric";
-
-    const label = document.createElement("p");
-    label.className = "metric-label";
-    label.textContent = metric.label;
-
-    const value = document.createElement("p");
-    value.className = "metric-value";
-    value.textContent = metric.value;
-
-    card.append(label, value);
-    grid.append(card);
-  });
-
-  node.append(grid);
-}
-
-function renderTable(node, columns, rows) {
-  clearNode(node);
-  const table = document.createElement("table");
-  const thead = document.createElement("thead");
-  const headRow = document.createElement("tr");
-
-  columns.forEach((column) => {
-    const th = document.createElement("th");
-    th.textContent = column.label;
-    headRow.append(th);
-  });
-  thead.append(headRow);
-  table.append(thead);
-
-  const tbody = document.createElement("tbody");
-  rows.forEach((row) => {
-    const tr = document.createElement("tr");
-    columns.forEach((column) => {
-      const td = document.createElement("td");
-      td.textContent = row[column.key];
-      tr.append(td);
-    });
-    tbody.append(tr);
-  });
-  table.append(tbody);
-
-  node.append(table);
 }
 
 function createSvgNode(tagName) {
@@ -646,19 +657,28 @@ function createNumberField(field, currentValue, onChange) {
   const row = document.createElement("div");
   row.className = "field";
   const fieldId = createFieldId(field.key ?? "input");
+  const controlMode = getFieldControlMode(field);
+  let syncedValue = normalizeFieldValue(field, currentValue, 0);
 
   const label = document.createElement("label");
+  label.id = `${fieldId}-label`;
   label.htmlFor = fieldId;
   label.textContent = field.label;
 
   const control = document.createElement("div");
   control.className = "field-control";
+  if (controlMode === "slider+number") {
+    control.classList.add("field-control--slider");
+  }
+
+  const numberControl = document.createElement("div");
+  numberControl.className = "field-number-control";
 
   if (field.prefix) {
     const prefix = document.createElement("span");
     prefix.className = "affix";
     prefix.textContent = field.prefix;
-    control.append(prefix);
+    numberControl.append(prefix);
   }
 
   const input = document.createElement("input");
@@ -669,18 +689,51 @@ function createNumberField(field, currentValue, onChange) {
   input.min = String(field.min);
   input.max = String(field.max);
   input.step = String(field.step);
-  input.value = String(currentValue);
-  input.addEventListener("input", () => {
-    const parsed = Number.parseFloat(input.value);
-    onChange(Number.isFinite(parsed) ? parsed : 0);
-  });
-  control.append(input);
+  input.value = String(syncedValue);
+  numberControl.append(input);
 
   if (field.suffix) {
     const suffix = document.createElement("span");
     suffix.className = "affix";
     suffix.textContent = translatePhrase(field.suffix);
-    control.append(suffix);
+    numberControl.append(suffix);
+  }
+  control.append(numberControl);
+
+  let slider = null;
+  if (controlMode === "slider+number") {
+    slider = document.createElement("input");
+    slider.className = "field-slider";
+    slider.type = "range";
+    slider.min = String(field.min);
+    slider.max = String(field.max);
+    slider.step = String(field.step);
+    slider.value = String(syncedValue);
+    slider.setAttribute("aria-labelledby", label.id);
+    control.append(slider);
+  }
+
+  function syncControls(rawValue) {
+    const nextValue = normalizeFieldValue(field, rawValue, syncedValue);
+    const hasChanged = nextValue !== syncedValue;
+    syncedValue = nextValue;
+    input.value = String(nextValue);
+    if (slider) {
+      slider.value = String(nextValue);
+    }
+    if (hasChanged) {
+      onChange(nextValue);
+    }
+  }
+
+  input.addEventListener("input", () => {
+    syncControls(input.value);
+  });
+
+  if (slider) {
+    slider.addEventListener("input", () => {
+      syncControls(slider.value);
+    });
   }
 
   row.append(label, control);
@@ -715,7 +768,13 @@ function createSelectField({ label, options, value, onChange }) {
   return row;
 }
 
-function renderGroupedFields(node, fields, state, onUpdate) {
+function renderGroupedFields(
+  node,
+  fields,
+  state,
+  onUpdate,
+  { openCategories = new Set(), onToggleCategory = () => {} } = {},
+) {
   clearNode(node);
 
   const grouped = new Map();
@@ -729,12 +788,23 @@ function renderGroupedFields(node, fields, state, onUpdate) {
   grouped.forEach((categoryFields, category) => {
     const section = document.createElement("section");
     section.className = "category";
+    const isOpen = openCategories.has(category);
 
-    const title = document.createElement("h3");
-    title.textContent = translatePhrase(
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "category-toggle";
+    toggle.setAttribute("aria-expanded", String(isOpen));
+    toggle.textContent = translatePhrase(
       CATEGORY_TITLES[category] ?? humanizeKey(category),
     );
-    section.append(title);
+    toggle.addEventListener("click", () => {
+      onToggleCategory(category);
+    });
+    section.append(toggle);
+
+    const content = document.createElement("div");
+    content.className = "category-content";
+    content.hidden = !isOpen;
 
     categoryFields.forEach((field) => {
       const translatedField = {
@@ -746,43 +816,98 @@ function renderGroupedFields(node, fields, state, onUpdate) {
         state[field.key],
         (value) => onUpdate(field.key, value),
       );
-      section.append(row);
+      content.append(row);
     });
+    section.append(content);
 
     node.append(section);
   });
 }
 
-function initEggPage() {
-  const fieldsNode = document.getElementById("fields");
-  const summaryNode = document.getElementById("summary");
-  const breakdownNode = document.getElementById("breakdown");
-  const resetButton = document.getElementById("reset-defaults");
+function createSummaryMetricCard(label, value, { primary = false } = {}) {
+  const card = document.createElement("article");
+  card.className = primary
+    ? "hero-summary-card hero-summary-card--primary"
+    : "hero-summary-card";
 
-  let state = { ...EGG_DEFAULTS };
+  const labelNode = document.createElement("p");
+  labelNode.className = "hero-summary-label";
+  labelNode.textContent = label;
 
-  function updateOutputs() {
-    const result = computeEggPricing(state);
-    renderSummary(summaryNode, [
-      {
-        label: translatePhrase("Recommended Price / Dozen"),
-        value: formatMoney(result.pricePerDozen),
-      },
-      {
-        label: translatePhrase("Cost / Dozen"),
-        value: formatMoney(result.costPerDozen),
-      },
-      {
-        label: translatePhrase("Profit / Dozen"),
-        value: formatMoney(result.profitPerDozen),
-      },
+  const valueNode = document.createElement("p");
+  valueNode.className = "hero-summary-value";
+  valueNode.textContent = value;
+
+  card.append(labelNode, valueNode);
+  return card;
+}
+
+function createProductionSummary(rows) {
+  const section = document.createElement("section");
+  section.className = "production-summary";
+
+  const heading = document.createElement("p");
+  heading.className = "production-summary-heading";
+  heading.textContent = translatePhrase("Production Summary");
+  section.append(heading);
+
+  rows.forEach(({ label, value }) => {
+    const row = document.createElement("div");
+    row.className = "production-summary-row";
+    const labelNode = document.createElement("p");
+    labelNode.className = "production-summary-label";
+    labelNode.textContent = label;
+    const valueNode = document.createElement("p");
+    valueNode.className = "production-summary-value";
+    valueNode.textContent = value;
+    row.append(labelNode, valueNode);
+    section.append(row);
+  });
+
+  return section;
+}
+
+function renderEggOutputSummary(node, result) {
+  clearNode(node);
+
+  const hero = document.createElement("section");
+  hero.className = "hero-summary";
+  hero.append(
+    createSummaryMetricCard(
+      translatePhrase("Recommended Price / Dozen"),
+      formatMoney(result.pricePerDozen),
+      { primary: true },
+    ),
+  );
+
+  const supporting = document.createElement("div");
+  supporting.className = "hero-summary-grid";
+  supporting.append(
+    createSummaryMetricCard(
+      translatePhrase("Cost / Dozen"),
+      formatMoney(result.costPerDozen),
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Profit / Dozen"),
+      formatMoney(result.profitPerDozen),
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Average Dozen / Hen / Year"),
+      formatGroupedNumber(result.averageDozenPerHenPerYear, 1),
+    ),
+  );
+  hero.append(supporting);
+  node.append(hero);
+
+  node.append(
+    createProductionSummary([
       {
         label: translatePhrase("Average Dozen / Hen / Year"),
-        value: formatNumber(result.averageDozenPerHenPerYear, 2),
+        value: formatGroupedNumber(result.averageDozenPerHenPerYear, 1),
       },
       {
         label: translatePhrase("Total Eggs / Hen"),
-        value: formatNumber(result.totalEggsPerHen, 0),
+        value: formatGroupedNumber(result.totalEggsPerHen, 0),
       },
       {
         label: translatePhrase("Annual Revenue / Hen"),
@@ -790,12 +915,144 @@ function initEggPage() {
           result.pricePerDozen * result.averageDozenPerHenPerYear,
         ),
       },
-    ]);
+    ]),
+  );
+}
+
+function renderMeatOutputSummary(node, state, result) {
+  clearNode(node);
+
+  const hero = document.createElement("section");
+  hero.className = "hero-summary";
+
+  const primaryGrid = document.createElement("div");
+  primaryGrid.className = "hero-summary-primary-grid";
+  primaryGrid.append(
+    createSummaryMetricCard(
+      translatePhrase("Recommended Price / lb (Sent Out)"),
+      formatMoney(result.pricePerPoundSentOut),
+      { primary: true },
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Recommended Price / lb (DIY)"),
+      formatMoney(result.pricePerPoundDIY),
+      { primary: true },
+    ),
+  );
+  hero.append(primaryGrid);
+
+  const supporting = document.createElement("div");
+  supporting.className = "hero-summary-grid";
+  supporting.append(
+    createSummaryMetricCard(
+      translatePhrase("Total Cost / Bird (Sent Out)"),
+      formatMoney(result.totalCostPerBirdSentOut),
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Cost / lb (Sent Out)"),
+      formatMoney(result.costPerPoundSentOut),
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Total Cost / Bird (DIY)"),
+      formatMoney(result.totalCostPerBirdDIY),
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Cost / lb (DIY)"),
+      formatMoney(result.costPerPoundDIY),
+    ),
+  );
+  hero.append(supporting);
+
+  const strip = document.createElement("div");
+  strip.className = "hero-summary-strip";
+  strip.append(
+    createSummaryMetricCard(
+      translatePhrase("Desired Gross Margin"),
+      `${formatGroupedNumber(state.desiredMargin, 0)}%`,
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Average Dressed Weight"),
+      `${formatGroupedNumber(state.averageWeight, 1)} ${translatePhrase(
+        "lbs",
+      )}`,
+    ),
+  );
+  hero.append(strip);
+  node.append(hero);
+
+  node.append(
+    createProductionSummary([
+      {
+        label: translatePhrase("Birds Finished Annually"),
+        value: formatGroupedNumber(state.birdsFinished, 0),
+      },
+      {
+        label: translatePhrase("Average Dressed Weight"),
+        value: `${formatGroupedNumber(
+          state.averageWeight,
+          1,
+        )} ${translatePhrase("lbs")}`,
+      },
+      {
+        label: translatePhrase("Total Meat (Annual)"),
+        value: `${formatGroupedNumber(
+          state.birdsFinished * state.averageWeight,
+          1,
+        )} ${translatePhrase("lbs")}`,
+      },
+    ]),
+  );
+}
+
+function initEggPage() {
+  const fieldsNode = document.getElementById("fields");
+  const summaryNode = document.getElementById("summary");
+  const breakdownNode = document.getElementById("breakdown");
+  const breakdownHeading = breakdownNode?.previousElementSibling;
+  const resetButton = document.getElementById("reset-defaults");
+
+  let state = { ...EGG_DEFAULTS };
+  const openCategories = new Set();
+  let isBreakdownOpen = false;
+
+  const breakdownToggle = document.createElement("button");
+  breakdownToggle.type = "button";
+  breakdownToggle.className = "breakdown-toggle";
+  if (breakdownHeading) {
+    breakdownHeading.insertAdjacentElement("afterend", breakdownToggle);
+  }
+  breakdownToggle.addEventListener("click", () => {
+    isBreakdownOpen = !isBreakdownOpen;
+    renderBreakdownVisibility();
+  });
+
+  function renderBreakdownVisibility() {
+    breakdownNode.hidden = !isBreakdownOpen;
+    breakdownToggle.classList.toggle("is-open", isBreakdownOpen);
+    breakdownToggle.setAttribute("aria-expanded", String(isBreakdownOpen));
+    breakdownToggle.textContent = isBreakdownOpen
+      ? translatePhrase("Hide Cost Breakdown")
+      : translatePhrase("Show Cost Breakdown");
+  }
+
+  function toggleCategory(category) {
+    if (openCategories.has(category)) {
+      openCategories.delete(category);
+    } else {
+      openCategories.add(category);
+    }
+    buildForm();
+  }
+
+  function updateOutputs() {
+    const result = computeEggPricing(state);
+    renderEggOutputSummary(summaryNode, result);
 
     renderCostBreakdownChart(breakdownNode, {
       costBreakdown: result.costBreakdown,
       totalCost: result.costPerDozen,
     });
+    renderBreakdownVisibility();
   }
 
   function updateField(key, value) {
@@ -804,7 +1061,10 @@ function initEggPage() {
   }
 
   function buildForm() {
-    renderGroupedFields(fieldsNode, EGG_FIELDS, state, updateField);
+    renderGroupedFields(fieldsNode, EGG_FIELDS, state, updateField, {
+      openCategories,
+      onToggleCategory: toggleCategory,
+    });
   }
 
   resetButton.addEventListener("click", () => {
@@ -826,38 +1086,45 @@ function initMeatPage() {
   const fieldsNode = document.getElementById("fields");
   const summaryNode = document.getElementById("summary");
   const breakdownNode = document.getElementById("breakdown");
+  const breakdownHeading = breakdownNode?.previousElementSibling;
   const resetButton = document.getElementById("reset-defaults");
 
   let state = { ...MEAT_DEFAULTS };
+  const openCategories = new Set();
+  let isBreakdownOpen = false;
+
+  const breakdownToggle = document.createElement("button");
+  breakdownToggle.type = "button";
+  breakdownToggle.className = "breakdown-toggle";
+  if (breakdownHeading) {
+    breakdownHeading.insertAdjacentElement("afterend", breakdownToggle);
+  }
+  breakdownToggle.addEventListener("click", () => {
+    isBreakdownOpen = !isBreakdownOpen;
+    renderBreakdownVisibility();
+  });
+
+  function renderBreakdownVisibility() {
+    breakdownNode.hidden = !isBreakdownOpen;
+    breakdownToggle.classList.toggle("is-open", isBreakdownOpen);
+    breakdownToggle.setAttribute("aria-expanded", String(isBreakdownOpen));
+    breakdownToggle.textContent = isBreakdownOpen
+      ? translatePhrase("Hide Cost Breakdown")
+      : translatePhrase("Show Cost Breakdown");
+  }
+
+  function toggleCategory(category) {
+    if (openCategories.has(category)) {
+      openCategories.delete(category);
+    } else {
+      openCategories.add(category);
+    }
+    buildForm();
+  }
 
   function updateOutputs() {
     const result = computeMeatPricing(state);
-    renderSummary(summaryNode, [
-      {
-        label: translatePhrase("Recommended Price / lb (Sent Out)"),
-        value: formatMoney(result.pricePerPoundSentOut),
-      },
-      {
-        label: translatePhrase("Recommended Price / lb (DIY)"),
-        value: formatMoney(result.pricePerPoundDIY),
-      },
-      {
-        label: translatePhrase("Cost / lb (Sent Out)"),
-        value: formatMoney(result.costPerPoundSentOut),
-      },
-      {
-        label: translatePhrase("Cost / lb (DIY)"),
-        value: formatMoney(result.costPerPoundDIY),
-      },
-      {
-        label: translatePhrase("Total Cost / Bird (Sent Out)"),
-        value: formatMoney(result.totalCostPerBirdSentOut),
-      },
-      {
-        label: translatePhrase("Total Cost / Bird (DIY)"),
-        value: formatMoney(result.totalCostPerBirdDIY),
-      },
-    ]);
+    renderMeatOutputSummary(summaryNode, state, result);
 
     clearNode(breakdownNode);
 
@@ -900,6 +1167,7 @@ function initMeatPage() {
       totalCost: result.totalCostPerBirdDIY,
     });
     breakdownNode.append(diySection);
+    renderBreakdownVisibility();
   }
 
   function updateField(key, value) {
@@ -908,7 +1176,10 @@ function initMeatPage() {
   }
 
   function buildForm() {
-    renderGroupedFields(fieldsNode, MEAT_FIELDS, state, updateField);
+    renderGroupedFields(fieldsNode, MEAT_FIELDS, state, updateField, {
+      openCategories,
+      onToggleCategory: toggleCategory,
+    });
   }
 
   resetButton.addEventListener("click", () => {
@@ -938,7 +1209,13 @@ function initStockPage() {
   const fieldsNode = document.getElementById("fields");
   const summaryNode = document.getElementById("summary");
   const breakdownNode = document.getElementById("breakdown");
+  const breakdownHeading = breakdownNode?.previousElementSibling;
   const resetButton = document.getElementById("reset-defaults");
+
+  if (breakdownHeading) {
+    breakdownHeading.hidden = true;
+  }
+  breakdownNode.hidden = true;
 
   let mode = "single";
   let singleState = { ...STOCK_SINGLE_DEFAULTS };
@@ -947,7 +1224,8 @@ function initStockPage() {
   function renderModeToggle() {
     clearNode(modeNode);
     const group = document.createElement("div");
-    group.className = "radio-group";
+    group.className = "mode-tabs";
+    group.setAttribute("role", "tablist");
 
     const modes = [
       { value: "single", label: translatePhrase("Single Class") },
@@ -955,19 +1233,25 @@ function initStockPage() {
     ];
 
     modes.forEach((option) => {
-      const label = document.createElement("label");
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = "stock-mode";
-      input.value = option.value;
-      input.checked = option.value === mode;
-      input.addEventListener("change", () => {
+      const button = document.createElement("button");
+      const isActive = option.value === mode;
+      button.type = "button";
+      button.className = "mode-tab";
+      button.textContent = option.label;
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(isActive));
+      button.setAttribute("aria-pressed", String(isActive));
+      button.classList.toggle("is-active", isActive);
+      button.addEventListener("click", () => {
+        if (mode === option.value) {
+          return;
+        }
         mode = option.value;
+        renderModeToggle();
         renderFields();
         renderOutputs();
       });
-      label.append(input, document.createTextNode(option.label));
-      group.append(label);
+      group.append(button);
     });
 
     modeNode.append(group);
@@ -986,6 +1270,7 @@ function initStockPage() {
           min: 1,
           max: 24,
           step: 0.5,
+          control: STOCK_FIELD_CONTROLS.forageHeight,
           suffix: "in",
         },
         activeState.forageHeight,
@@ -1032,6 +1317,7 @@ function initStockPage() {
           min: 1,
           max: 100,
           step: 1,
+          control: STOCK_FIELD_CONTROLS.utilizationPercent,
           suffix: "%",
         },
         activeState.utilizationPercent,
@@ -1052,6 +1338,7 @@ function initStockPage() {
           min: 1,
           max: 3000,
           step: 1,
+          control: STOCK_FIELD_CONTROLS.paddockSideLength,
           suffix: "ft",
         },
         activeState.paddockSideLength,
@@ -1072,6 +1359,7 @@ function initStockPage() {
           min: 1,
           max: 24,
           step: 1,
+          control: STOCK_FIELD_CONTROLS.movesPerDay,
         },
         activeState.movesPerDay,
         (value) => {
@@ -1092,6 +1380,7 @@ function initStockPage() {
             min: 0,
             max: 50000,
             step: 1,
+            control: STOCK_FIELD_CONTROLS.numberOfHead,
           },
           singleState.numberOfHead,
           (value) => {
@@ -1109,6 +1398,7 @@ function initStockPage() {
             min: 1,
             max: 5000,
             step: 1,
+            control: STOCK_FIELD_CONTROLS.averageWeight,
             suffix: "lbs",
           },
           singleState.averageWeight,
@@ -1204,133 +1494,146 @@ function initStockPage() {
     }
   }
 
+  function renderStockPanels(summaryTarget, result) {
+    clearNode(summaryTarget);
+
+    const panels = document.createElement("div");
+    panels.className = "stock-panels";
+
+    const heroCard = document.createElement("div");
+    heroCard.className = "stock-hero-card";
+    const heroLabel = document.createElement("p");
+    heroLabel.className = "stock-hero-label";
+    heroLabel.textContent = translatePhrase("Daily Paddock Size");
+    const heroValue = document.createElement("p");
+    heroValue.className = "stock-hero-value";
+    heroValue.textContent = `${formatGroupedNumber(
+      result.acresNeededPerDay,
+      2,
+    )} ${translatePhrase("acres")}`;
+    const heroSub = document.createElement("p");
+    heroSub.className = "stock-hero-sub";
+    heroSub.textContent = `(${formatGroupedNumber(
+      result.squareFeet,
+      0,
+    )} ${translatePhrase("sq ft")})`;
+    heroCard.append(heroLabel, heroValue, heroSub);
+    panels.append(heroCard);
+
+    function addPanel(title, items) {
+      const card = document.createElement("div");
+      card.className = "stock-info-card";
+      const heading = document.createElement("p");
+      heading.className = "stock-info-heading";
+      heading.textContent = title;
+      card.append(heading);
+      const grid = document.createElement("div");
+      grid.className = "stock-info-grid";
+      items.forEach(({ label, value }) => {
+        const item = document.createElement("div");
+        item.className = "stock-info-item";
+        const itemLabel = document.createElement("p");
+        itemLabel.className = "stock-info-item-label";
+        itemLabel.textContent = label;
+        const itemValue = document.createElement("p");
+        itemValue.className = "stock-info-item-value";
+        itemValue.textContent = value;
+        item.append(itemLabel, itemValue);
+        grid.append(item);
+      });
+      card.append(grid);
+      panels.append(card);
+    }
+
+    addPanel(translatePhrase("Forage Analysis"), [
+      {
+        label: translatePhrase("Forage Available"),
+        value: `${formatGroupedNumber(
+          result.forageLbsPerAcre,
+          0,
+        )} ${translatePhrase("lbs/acre")}`,
+      },
+      {
+        label: translatePhrase("Dry Matter Available"),
+        value: `${formatGroupedNumber(
+          result.dryMatterAvailable,
+          0,
+        )} ${translatePhrase("lbs/acre")}`,
+      },
+    ]);
+
+    const dmNeededValue =
+      result.dryMatterNeededPerDay != null
+        ? result.dryMatterNeededPerDay
+        : result.totalDryMatterNeeded;
+    addPanel(translatePhrase("Herd Requirements"), [
+      {
+        label: translatePhrase("Daily Dry Matter Need"),
+        value: `${formatGroupedNumber(dmNeededValue, 0)} ${translatePhrase(
+          "lbs",
+        )}`,
+      },
+      {
+        label: translatePhrase("Stocking Density"),
+        value: `${formatGroupedNumber(
+          result.stockingDensityPerAcre,
+          0,
+        )} ${translatePhrase("lbs/acre")}`,
+      },
+    ]);
+
+    const setSide =
+      mode === "single"
+        ? singleState.paddockSideLength
+        : mixedState.paddockSideLength;
+    const dimensionsCard = document.createElement("div");
+    dimensionsCard.className = "stock-info-card";
+    const dimensionsHeading = document.createElement("p");
+    dimensionsHeading.className = "stock-info-heading";
+    dimensionsHeading.textContent = translatePhrase("Paddock Dimensions");
+    dimensionsCard.append(dimensionsHeading);
+
+    const dimensionsRow = document.createElement("div");
+    dimensionsRow.className = "stock-dimensions-row";
+
+    const setBlock = document.createElement("div");
+    setBlock.className = "stock-dimensions-block";
+    const setValue = document.createElement("p");
+    setValue.className = "stock-dimensions-value";
+    setValue.textContent = formatGroupedNumber(setSide, 0);
+    const setLabel = document.createElement("p");
+    setLabel.className = "stock-dimensions-label";
+    setLabel.textContent = translatePhrase("ft (set)");
+    setBlock.append(setValue, setLabel);
+
+    const separator = document.createElement("p");
+    separator.className = "stock-dimensions-separator";
+    separator.textContent = "×";
+
+    const calcBlock = document.createElement("div");
+    calcBlock.className = "stock-dimensions-block";
+    const calcValue = document.createElement("p");
+    calcValue.className = "stock-dimensions-value";
+    calcValue.textContent = formatGroupedNumber(result.paddockWidth, 0);
+    const calcLabel = document.createElement("p");
+    calcLabel.className = "stock-dimensions-label";
+    calcLabel.textContent = translatePhrase("ft (calculated)");
+    calcBlock.append(calcValue, calcLabel);
+
+    dimensionsRow.append(setBlock, separator, calcBlock);
+    dimensionsCard.append(dimensionsRow);
+    panels.append(dimensionsCard);
+
+    summaryTarget.append(panels);
+  }
+
   function renderOutputs() {
     if (mode === "single") {
       const result = computeStockSingle(singleState);
-      renderSummary(summaryNode, [
-        {
-          label: translatePhrase("Forage (lbs/acre)"),
-          value: formatNumber(result.forageLbsPerAcre, 2),
-        },
-        {
-          label: translatePhrase("Total Animal Weight (lbs)"),
-          value: formatNumber(result.totalAnimalWeight, 2),
-        },
-        {
-          label: translatePhrase("Dry Matter %"),
-          value: formatPercent(result.dryMatterPercent),
-        },
-        {
-          label: translatePhrase("Dry Matter Needed / Day"),
-          value: formatNumber(result.dryMatterNeededPerDay, 2),
-        },
-        {
-          label: translatePhrase("Dry Matter Available"),
-          value: formatNumber(result.dryMatterAvailable, 2),
-        },
-        {
-          label: translatePhrase("Acres Needed / Day"),
-          value: formatNumber(result.acresNeededPerDay, 4),
-        },
-        {
-          label: translatePhrase("Square Feet"),
-          value: formatNumber(result.squareFeet, 2),
-        },
-        {
-          label: translatePhrase("Paddock Width"),
-          value: formatNumber(result.paddockWidth, 2),
-        },
-        {
-          label: translatePhrase("Stocking Density / Acre"),
-          value: formatNumber(result.stockingDensityPerAcre, 2),
-        },
-        {
-          label: translatePhrase("Paddock Size with Moves"),
-          value: formatNumber(result.paddockSizeWithMoves, 4),
-        },
-        {
-          label: translatePhrase("Stocking Density with Moves"),
-          value: formatNumber(result.stockingDensityWithMoves, 2),
-        },
-      ]);
-
-      clearNode(breakdownNode);
-      const note = document.createElement("p");
-      note.textContent = translatePhrase(
-        "Single class mode does not include an animal breakdown table.",
-      );
-      breakdownNode.append(note);
+      renderStockPanels(summaryNode, result);
     } else {
       const result = computeStockMixed(mixedState);
-      renderSummary(summaryNode, [
-        {
-          label: translatePhrase("Forage (lbs/acre)"),
-          value: formatNumber(result.forageLbsPerAcre, 2),
-        },
-        {
-          label: translatePhrase("Total Animal Weight (lbs)"),
-          value: formatNumber(result.totalAnimalWeight, 2),
-        },
-        {
-          label: translatePhrase("Weighted Dry Matter %"),
-          value: formatPercent(result.weightedDryMatterPercent),
-        },
-        {
-          label: translatePhrase("Total Dry Matter Needed / Day"),
-          value: formatNumber(result.totalDryMatterNeeded, 2),
-        },
-        {
-          label: translatePhrase("Dry Matter Available"),
-          value: formatNumber(result.dryMatterAvailable, 2),
-        },
-        {
-          label: translatePhrase("Acres Needed / Day"),
-          value: formatNumber(result.acresNeededPerDay, 4),
-        },
-        {
-          label: translatePhrase("Square Feet"),
-          value: formatNumber(result.squareFeet, 2),
-        },
-        {
-          label: translatePhrase("Paddock Width"),
-          value: formatNumber(result.paddockWidth, 2),
-        },
-        {
-          label: translatePhrase("Stocking Density / Acre"),
-          value: formatNumber(result.stockingDensityPerAcre, 2),
-        },
-        {
-          label: translatePhrase("Paddock Size with Moves"),
-          value: formatNumber(result.paddockSizeWithMoves, 4),
-        },
-        {
-          label: translatePhrase("Stocking Density with Moves"),
-          value: formatNumber(result.stockingDensityWithMoves, 2),
-        },
-      ]);
-
-      renderTable(
-        breakdownNode,
-        [
-          { key: "label", label: translatePhrase("Class") },
-          { key: "numberOfHead", label: translatePhrase("Head") },
-          { key: "averageWeight", label: translatePhrase("Avg Weight") },
-          { key: "totalWeight", label: translatePhrase("Total Weight") },
-          { key: "dryMatterPercent", label: translatePhrase("Dry Matter %") },
-          {
-            key: "dryMatterNeeded",
-            label: translatePhrase("Dry Matter Needed"),
-          },
-        ],
-        result.animalBreakdown.map((row) => ({
-          label: translatePhrase(row.label),
-          numberOfHead: formatNumber(row.numberOfHead, 0),
-          averageWeight: formatNumber(row.averageWeight, 0),
-          totalWeight: formatNumber(row.totalWeight, 2),
-          dryMatterPercent: formatPercent(row.dryMatterPercent),
-          dryMatterNeeded: formatNumber(row.dryMatterNeeded, 2),
-        })),
-      );
+      renderStockPanels(summaryNode, result);
     }
   }
 
