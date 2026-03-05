@@ -243,10 +243,10 @@ const PHRASE_TRANSLATIONS_ES = {
   "Average Dozen per Hen per Year": "Docenas promedio por gallina por año",
   "Total Eggs per Hen (2 years)": "Huevos totales por gallina (2 años)",
   "Annual Revenue per Hen": "Ingreso anual por gallina",
-  "Recommended Price / lb (Sent Out)": "Precio recomendado / lb (externo)",
-  "Recommended Price / lb (DIY)": "Precio recomendado / lb (propio)",
-  "Cost / lb (Sent Out)": "Costo / lb (externo)",
-  "Cost / lb (DIY)": "Costo / lb (propio)",
+  "Recommended Price / lb (Sent Out)": "Precio recomendado / libra (externo)",
+  "Recommended Price / lb (DIY)": "Precio recomendado / libra (propio)",
+  "Cost / lb (Sent Out)": "Costo / libra (externo)",
+  "Cost / lb (DIY)": "Costo / libra (propio)",
   "Total Cost / Bird (Sent Out)": "Costo total / ave (externo)",
   "Total Cost / Bird (DIY)": "Costo total / ave (propio)",
   "Recommended Price per Pound": "Precio recomendado por libra",
@@ -262,8 +262,8 @@ const PHRASE_TRANSLATIONS_ES = {
   "Avg. Weight": "Peso prom.",
   "Birds Finished (Annual)": "Aves terminadas (anual)",
   "Avg. Dressed Weight": "Peso canal prom.",
-  "Forage (lbs/acre)": "Forraje (lb/acre)",
-  "Total Animal Weight (lbs)": "Peso animal total (lb)",
+  "Forage (lbs/acre)": "Forraje (libras/acre)",
+  "Total Animal Weight (lbs)": "Peso animal total (libras)",
   "Dry Matter %": "% de materia seca",
   "Dry Matter Needed / Day": "Materia seca necesaria / día",
   "Dry Matter Available": "Materia seca disponible",
@@ -318,13 +318,14 @@ const PHRASE_TRANSLATIONS_ES = {
   "Hide Cost Breakdown": "Ocultar desglose de costos",
   Reset: "Restablecer",
   "Daily Paddock Size": "Tamaño diario del potrero",
-  acres: "acres",
+  acres: "ac",
   "sq ft": "pies²",
+  "Forage Available": "Forraje disponible",
   "Forage Analysis": "Análisis de forraje",
-  "lbs/acre": "lb/acre",
+  "lbs/acre": "libras/acre",
   "Herd Requirements": "Requerimientos del rodeo",
   "Daily Dry Matter Need": "Necesidad diaria de materia seca",
-  lbs: "lb",
+  lbs: "libras",
   "Stocking Density": "Carga animal",
   "Paddock Dimensions": "Dimensiones del potrero",
   "ft (set)": "ft (definido)",
@@ -1188,7 +1189,6 @@ function initEggPage() {
   });
 
   onLanguageChange(() => {
-    renderResetLabel();
     buildForm();
     updateOutputs();
   });

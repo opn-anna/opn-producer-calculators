@@ -2,15 +2,16 @@
 
 This repository contains source-controlled static pages for three producer calculators:
 
-- Home page: `/`
+- Egg price calculator: `/` and `/egg-price/`
 - Egg price calculator: `/egg-price/`
 - Meat chicken price calculator: `/meat-price/`
 - Stock density calculator: `/stock-density/`
 
 ## Repository layout
 
-- `index.html`: landing page that links to all calculators
-- `egg-price/index.html`, `meat-price/index.html`, `stock-density/index.html`: per-calculator entrypoints
+- `index.html`: egg calculator entrypoint served at `/`
+- `egg-price/index.html`: egg calculator alias entrypoint served at `/egg-price/`
+- `meat-price/index.html`, `stock-density/index.html`: per-calculator entrypoints
 - `src/app.mjs`: shared UI wiring, form rendering, and output rendering
 - `src/calculators.mjs`: calculator defaults, input schema, and formula functions
 - `scripts/verify-parity.mjs`: parity check against baseline outputs
