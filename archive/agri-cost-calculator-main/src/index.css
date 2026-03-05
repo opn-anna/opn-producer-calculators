@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animal Agriculture Reform Collaborative - Egg Price Calculator Design System */
+/* Earthy, agricultural palette with clean, professional aesthetic */
+
+@layer base {
+  :root {
+    /* Warm cream background - inviting and natural */
+    --background: 40 33% 97%;
+    --foreground: 150 25% 15%;
+
+    /* Cards with subtle warmth */
+    --card: 0 0% 100%;
+    --card-foreground: 150 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 25% 15%;
+
+    /* Forest green primary - represents pasture/nature */
+    --primary: 158 35% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Warm wheat secondary */
+    --secondary: 38 35% 92%;
+    --secondary-foreground: 150 25% 20%;
+
+    /* Muted earth tones */
+    --muted: 40 20% 94%;
+    --muted-foreground: 150 15% 45%;
+
+    /* Accent - golden egg yolk warmth */
+    --accent: 42 85% 55%;
+    --accent-foreground: 150 25% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 15% 88%;
+    --input: 40 20% 94%;
+    --ring: 158 35% 35%;
+
+    --radius: 0.75rem;
+
+    /* Chart colors - natural palette */
+    --chart-feed: 158 35% 35%;
+    --chart-labor: 42 85% 55%;
+    --chart-infrastructure: 18 75% 55%;
+    --chart-distribution: 195 70% 45%;
+    --chart-brooding: 280 45% 55%;
+    --chart-other: 150 15% 65%;
+
+    /* Shadows */
+    --shadow-soft: 0 4px 24px -4px hsl(150 25% 15% / 0.08);
+    --shadow-card: 0 1px 3px hsl(150 25% 15% / 0.06), 0 8px 24px -8px hsl(150 25% 15% / 0.1);
+    --shadow-elevated: 0 12px 40px -12px hsl(150 25% 15% / 0.15);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 150 25% 8%;
+    --foreground: 40 33% 95%;
+
+    --card: 150 20% 12%;
+    --card-foreground: 40 33% 95%;
+
+    --popover: 150 20% 12%;
+    --popover-foreground: 40 33% 95%;
+
+    --primary: 158 45% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 15% 18%;
+    --secondary-foreground: 40 33% 90%;
+
+    --muted: 150 15% 18%;
+    --muted-foreground: 40 20% 60%;
+
+    --accent: 42 75% 50%;
+    --accent-foreground: 150 25% 10%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 150 15% 20%;
+    --input: 150 15% 18%;
+    --ring: 158 45% 45%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom scrollbar - hidden until hover */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  *:hover::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20;
+  }
+
+  *:hover::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  }
+}
+
+@layer components {
+  .calculator-card {
+    @apply bg-card rounded-2xl p-6 shadow-[var(--shadow-card)] transition-shadow duration-300;
+  }
+
+  .calculator-card:hover {
+    @apply shadow-[var(--shadow-elevated)];
+  }
+
+  .result-display {
+    @apply bg-gradient-to-br from-secondary via-secondary to-muted rounded-2xl p-8;
+  }
+
+  .input-field {
+    @apply bg-input border-0 rounded-xl h-12 px-4 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/20 transition-all duration-200;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3;
+  }
+
+  .value-label {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+
+  .value-display {
+    @apply text-lg font-semibold text-foreground;
+  }
+}
