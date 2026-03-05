@@ -66,10 +66,9 @@ const SUPPORTED_LANGUAGES = new Set(["en", "es"]);
 
 const STATIC_TRANSLATIONS = {
   en: {
-    "meta.home.title":
-      "Egg Price Calculator | Animal Agriculture Reform Collaborative",
+    "meta.home.title": "Pasture Producer Calculators | Oregon Pasture Network",
     "meta.home.description":
-      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
+      "Pasture Producer Calculators: egg price, meat price, and stock density. Tools by Oregon Pasture Network to support pasture-based producers with pricing decisions.",
     "page.home.title": "Egg Price Calculator",
     "page.home.description":
       "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
@@ -109,9 +108,9 @@ const STATIC_TRANSLATIONS = {
   },
   es: {
     "meta.home.title":
-      "Calculadora de precio de huevos | Animal Agriculture Reform Collaborative",
+      "Calculadoras para productores de pastoreo | Oregon Pasture Network",
     "meta.home.description":
-      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
+      "Calculadoras para productores de pastoreo: precio de huevos, precio de carne y carga animal. Herramientas de Oregon Pasture Network para apoyar decisiones de precios en sistemas de pastoreo.",
     "page.home.title": "Calculadora de precio de huevos",
     "page.home.description":
       "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
