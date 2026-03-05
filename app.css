@@ -48,6 +48,27 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  color: #1e3a8a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.brand-mark::before {
+  content: "";
+  width: 0.54rem;
+  height: 0.54rem;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 3px #dbeafe;
+}
+
 .page-header h1 {
   margin: 0;
   font-size: clamp(1.35rem, 1.05rem + 0.9vw, 1.85rem);
@@ -69,6 +90,9 @@ body {
 
 .page-nav a {
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
   padding: 0.42rem 0.72rem;
   border-radius: 999px;
   border: 1px solid var(--border-strong);
@@ -82,20 +106,38 @@ body {
     color 120ms ease,
     transform 120ms ease;
 }
+.page-nav a::before {
+  content: "";
+  width: 0.82rem;
+  height: 0.82rem;
+  border-radius: 0.28rem;
+  border: 1px solid #b5c5de;
+  background: linear-gradient(180deg, #f8fbff 0%, #e8f0ff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
 
 .page-nav a:hover {
   background: var(--brand-soft);
   border-color: #9fb5db;
 }
 
-body[data-page="home"] .page-nav a[href="/"],
-body[data-page="egg"] .page-nav a[href="/egg-price/"],
+body[data-page="egg"] .page-nav a[href="/"],
+body[data-page="meat"] .page-nav a[href="/meat-price"],
 body[data-page="meat"] .page-nav a[href="/meat-price/"],
+body[data-page="stock"] .page-nav a[href="/stock-density"],
 body[data-page="stock"] .page-nav a[href="/stock-density/"] {
   background: var(--brand);
   border-color: var(--brand);
   color: #ffffff;
   box-shadow: var(--shadow-sm);
+}
+body[data-page="egg"] .page-nav a[href="/"]::before,
+body[data-page="meat"] .page-nav a[href="/meat-price"]::before,
+body[data-page="meat"] .page-nav a[href="/meat-price/"]::before,
+body[data-page="stock"] .page-nav a[href="/stock-density"]::before,
+body[data-page="stock"] .page-nav a[href="/stock-density/"]::before {
+  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .language-switch {
@@ -199,13 +241,20 @@ body[data-page="stock"] .page-nav a[href="/stock-density/"] {
 .panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
 }
 
 .panel-header h2 {
   margin: 0;
+}
+.panel-header > button::before {
+  content: "↺";
+  display: inline-block;
+  margin-right: 0.34rem;
+  font-size: 0.84rem;
+  opacity: 0.78;
 }
 
 button {
@@ -243,12 +292,21 @@ button:active {
   justify-content: space-between;
   text-align: left;
   border-radius: var(--radius-md);
-  font-size: 0.86rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  background: var(--surface-muted);
+  font-size: 0.91rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #334155;
+  background: #ffffff;
   border-color: var(--border);
+}
+.category-toggle::before {
+  content: "";
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 0.25rem;
+  margin-right: 0.5rem;
+  border: 1px solid #bfd0ea;
+  background: linear-gradient(180deg, #f8fbff 0%, #e8f1ff 100%);
 }
 
 .category-toggle::after {
@@ -424,12 +482,24 @@ a:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.7rem;
 }
+.hero-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
 
-.hero-summary-grid,
 .hero-summary-strip {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.6rem;
+}
+.hero-summary-section-label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
 }
 
 .hero-summary-card {
@@ -437,6 +507,13 @@ a:focus-visible {
   border-radius: var(--radius-md);
   background: var(--surface-muted);
   padding: 0.68rem 0.72rem;
+}
+.hero-summary-overline {
+  margin: 0 0 0.2rem;
+  color: #4b5d78;
+  font-size: 0.82rem;
+  line-height: 1;
+  font-weight: 700;
 }
 
 .hero-summary-card--primary {
@@ -456,6 +533,61 @@ a:focus-visible {
   font-size: 1.45rem;
   font-weight: 700;
   line-height: 1.1;
+}
+.hero-summary-unit {
+  margin: 0.24rem 0 0;
+  color: #5b687e;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.processing-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.processing-summary-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 0.62rem 0.68rem 0.5rem;
+}
+
+.processing-summary-heading {
+  margin: 0 0 0.4rem;
+  color: #2d4d79;
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+.processing-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.24rem 0;
+  border-top: 1px solid #edf2f8;
+}
+
+.processing-summary-row:first-of-type {
+  border-top: 0;
+}
+
+.processing-summary-label {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.84rem;
+}
+
+.processing-summary-value {
+  margin: 0;
+  color: #0b254f;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .production-summary {
@@ -613,11 +745,27 @@ a:focus-visible {
 }
 .breakdown-toggle {
   margin-bottom: 0.7rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.breakdown-toggle::after {
+  content: "▸";
+  font-size: 0.9rem;
+  transform: translateY(-1px);
+  transition: transform 120ms ease;
 }
 
 .breakdown-toggle.is-open {
   background: var(--brand-soft);
   border-color: #9eb5dc;
+}
+
+.breakdown-toggle.is-open::after {
+  transform: rotate(90deg);
 }
 
 .cost-breakdown-chart {
@@ -789,10 +937,20 @@ tbody tr:hover {
   border-color: var(--border);
   background: var(--surface-muted);
 }
+.mode-tab::before {
+  content: "◻";
+  display: inline-block;
+  margin-right: 0.34rem;
+  font-size: 0.7rem;
+  opacity: 0.72;
+}
 .mode-tab.is-active {
   background: var(--brand);
   border-color: var(--brand);
   color: #ffffff;
+}
+.mode-tab.is-active::before {
+  opacity: 1;
 }
 
 @media (min-width: 1101px) {
@@ -865,6 +1023,7 @@ tbody tr:hover {
 
   .hero-summary-primary-grid,
   .hero-summary-grid,
+  .processing-summary-grid,
   .hero-summary-strip {
     grid-template-columns: minmax(0, 1fr);
   }

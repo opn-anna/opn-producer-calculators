@@ -18,17 +18,20 @@ const CATEGORY_TITLES = {
   labor: "Labor & General",
   chicks: "Chicks",
   brooding: "Brooding",
-  laying: "Laying",
+  laying: "Laying Flock",
   infrastructure: "Infrastructure",
   distribution: "Distribution",
   culling: "Culling",
   chickPurchase: "Chick Purchase",
   feed: "Feed",
   fieldLabor: "Field Labor",
-  processingSentOut: "Processing (Sent Out)",
-  processingDIY: "Processing (DIY)",
-  other: "Other",
+  processingSentOut: "Processing - Sent Out",
+  processingDIY: "Processing - DIY",
+  other: "Other Factors",
 };
+const EGG_VISIBLE_FIELDS = EGG_FIELDS.filter(
+  (field) => field.category !== "chicks",
+);
 
 const BREAKDOWN_COLORS = {
   brooding: "#9a59c7",
@@ -63,13 +66,16 @@ const SUPPORTED_LANGUAGES = new Set(["en", "es"]);
 
 const STATIC_TRANSLATIONS = {
   en: {
-    "meta.home.title": "Producer Calculators",
-    "meta.home.description": "Choose a calculator.",
-    "page.home.title": "Producer Calculators",
-    "page.home.description": "Choose a calculator.",
+    "meta.home.title":
+      "Egg Price Calculator | Animal Agriculture Reform Collaborative",
+    "meta.home.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
+    "page.home.title": "Egg Price Calculator",
+    "page.home.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
     "nav.home": "Home",
     "nav.egg": "Egg Price",
-    "nav.meat": "Meat Chicken Price",
+    "nav.meat": "Meat Price",
     "nav.stock": "Stock Density",
     "language.label": "Language",
     "home.calculators.heading": "Calculators",
@@ -77,36 +83,41 @@ const STATIC_TRANSLATIONS = {
     "home.calculators.meat": "Meat Chicken Price Calculator",
     "home.calculators.stock": "Stock Density Calculator",
     "meta.egg.title": "Egg Price Calculator",
-    "meta.egg.description": "Calculate egg pricing from production inputs.",
+    "meta.egg.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
     "page.egg.title": "Egg Price Calculator",
-    "page.egg.description": "Calculate egg pricing from production inputs.",
+    "page.egg.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
     "common.inputs": "Inputs",
-    "common.reset": "Reset to defaults",
+    "common.reset": "Reset to Defaults",
     "common.outputs": "Outputs",
     "egg.breakdown.heading": "Cost Breakdown (per dozen)",
     "meta.meat.title": "Meat Chicken Price Calculator",
     "meta.meat.description":
-      "Calculate the true cost of production for pasture-raised meat chickens.",
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised meat chickens",
     "page.meat.title": "Meat Chicken Price Calculator",
     "page.meat.description":
-      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised meat chickens.",
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised meat chickens",
     "meat.breakdown.heading": "Cost Breakdown (per bird)",
     "meta.stock.title": "Stock Density Calculator",
     "meta.stock.description":
-      "Calculate paddock sizing and stocking density based on forage and herd inputs.",
+      "Calculate optimal stocking density for your pasture management. Measure forage height, enter your herd details, and get paddock sizing recommendations.",
     "page.stock.title": "Stock Density Calculator",
     "page.stock.description":
-      "Calculate optimal stocking density for your pasture management.",
+      "Calculate optimal stocking density for your pasture management. Measure forage height, enter your herd details, and get paddock sizing recommendations.",
     "stock.breakdown.heading": "Animal Breakdown",
   },
   es: {
-    "meta.home.title": "Calculadoras para productores",
-    "meta.home.description": "Elige una calculadora.",
-    "page.home.title": "Calculadoras para productores",
-    "page.home.description": "Elige una calculadora.",
+    "meta.home.title":
+      "Calculadora de precio de huevos | Animal Agriculture Reform Collaborative",
+    "meta.home.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
+    "page.home.title": "Calculadora de precio de huevos",
+    "page.home.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
     "nav.home": "Inicio",
     "nav.egg": "Precio de huevos",
-    "nav.meat": "Precio de pollo de engorde",
+    "nav.meat": "Precio de carne",
     "nav.stock": "Carga animal",
     "language.label": "Idioma",
     "home.calculators.heading": "Calculadoras",
@@ -115,27 +126,27 @@ const STATIC_TRANSLATIONS = {
     "home.calculators.stock": "Calculadora de carga animal",
     "meta.egg.title": "Calculadora de precio de huevos",
     "meta.egg.description":
-      "Calcula el precio del huevo a partir de los insumos de producción.",
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
     "page.egg.title": "Calculadora de precio de huevos",
     "page.egg.description":
-      "Calcula el precio del huevo a partir de los insumos de producción.",
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
     "common.inputs": "Entradas",
-    "common.reset": "Restablecer valores",
+    "common.reset": "Restablecer valores predeterminados",
     "common.outputs": "Resultados",
     "egg.breakdown.heading": "Desglose de costos (por docena)",
     "meta.meat.title": "Calculadora de precio de pollo de engorde",
     "meta.meat.description":
-      "Calcula el costo real de producción para pollos de engorde en pastoreo.",
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus pollos de engorde en pastoreo",
     "page.meat.title": "Calculadora de precio de pollo de engorde",
     "page.meat.description":
-      "Calcula el costo real de producción para asegurar un precio sostenible de tus pollos de engorde en pastoreo.",
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus pollos de engorde en pastoreo",
     "meat.breakdown.heading": "Desglose de costos (por ave)",
     "meta.stock.title": "Calculadora de carga animal",
     "meta.stock.description":
-      "Calcula el tamaño de potreros y la carga animal según forraje y rodeo.",
+      "Calcula la carga animal óptima para el manejo de tus pasturas. Mide la altura del forraje, ingresa los datos de tu rodeo y obtén recomendaciones de tamaño de potrero.",
     "page.stock.title": "Calculadora de carga animal",
     "page.stock.description":
-      "Calcula la carga animal óptima para el manejo de tus pasturas.",
+      "Calcula la carga animal óptima para el manejo de tus pasturas. Mide la altura del forraje, ingresa los datos de tu rodeo y obtén recomendaciones de tamaño de potrero.",
     "stock.breakdown.heading": "Desglose por animal",
   },
 };
@@ -145,12 +156,16 @@ const PHRASE_TRANSLATIONS_ES = {
   Chicks: "Pollitos",
   Brooding: "Crianza",
   Laying: "Postura",
+  "Laying Flock": "Lote de postura",
   Infrastructure: "Infraestructura",
   Distribution: "Distribución",
   Culling: "Descarte",
   "Chick Purchase": "Compra de pollitos",
   Feed: "Alimento",
   "Field Labor": "Trabajo en campo",
+  "Processing - Sent Out": "Procesamiento - externo",
+  "Processing - DIY": "Procesamiento - propio",
+  "Other Factors": "Otros factores",
   "Processing (Sent Out)": "Procesamiento (externo)",
   "Processing (DIY)": "Procesamiento (propio)",
   Other: "Otros",
@@ -220,12 +235,33 @@ const PHRASE_TRANSLATIONS_ES = {
   "Average Dozen / Hen / Year": "Docenas promedio / gallina / año",
   "Total Eggs / Hen": "Huevos totales / gallina",
   "Annual Revenue / Hen": "Ingreso anual / gallina",
+  "Recommended Price": "Precio recomendado",
+  "Per Dozen": "Por docena",
+  "Cost per Dozen": "Costo por docena",
+  "Gross Margin per Dozen": "Margen bruto por docena",
+  "Dozen/Hen/Year": "Docenas/gallina/año",
+  "Average Dozen per Hen per Year": "Docenas promedio por gallina por año",
+  "Total Eggs per Hen (2 years)": "Huevos totales por gallina (2 años)",
+  "Annual Revenue per Hen": "Ingreso anual por gallina",
   "Recommended Price / lb (Sent Out)": "Precio recomendado / lb (externo)",
   "Recommended Price / lb (DIY)": "Precio recomendado / lb (propio)",
   "Cost / lb (Sent Out)": "Costo / lb (externo)",
   "Cost / lb (DIY)": "Costo / lb (propio)",
   "Total Cost / Bird (Sent Out)": "Costo total / ave (externo)",
   "Total Cost / Bird (DIY)": "Costo total / ave (propio)",
+  "Recommended Price per Pound": "Precio recomendado por libra",
+  "Sent Out Processing": "Procesamiento externo",
+  "DIY Processing": "Procesamiento propio",
+  "per pound": "por libra",
+  "Sent Out": "Externo",
+  "Cost per Bird": "Costo por ave",
+  "Cost per Pound": "Costo por libra",
+  "Gross Margin per Pound": "Margen bruto por libra",
+  DIY: "Propio",
+  "Gross Margin": "Margen bruto",
+  "Avg. Weight": "Peso prom.",
+  "Birds Finished (Annual)": "Aves terminadas (anual)",
+  "Avg. Dressed Weight": "Peso canal prom.",
   "Forage (lbs/acre)": "Forraje (lb/acre)",
   "Total Animal Weight (lbs)": "Peso animal total (lb)",
   "Dry Matter %": "% de materia seca",
@@ -280,6 +316,7 @@ const PHRASE_TRANSLATIONS_ES = {
   each: "cada uno",
   "Show Cost Breakdown": "Mostrar desglose de costos",
   "Hide Cost Breakdown": "Ocultar desglose de costos",
+  Reset: "Restablecer",
   "Daily Paddock Size": "Tamaño diario del potrero",
   acres: "acres",
   "sq ft": "pies²",
@@ -296,6 +333,7 @@ const PHRASE_TRANSLATIONS_ES = {
   "Total Meat (Annual)": "Carne total (anual)",
   "Single class mode does not include an animal breakdown table.":
     "El modo de clase única no incluye una tabla de desglose por animal.",
+  "Cost Breakdown": "Desglose de costos",
 };
 
 let currentLanguage = readStoredLanguage();
@@ -824,11 +862,21 @@ function renderGroupedFields(
   });
 }
 
-function createSummaryMetricCard(label, value, { primary = false } = {}) {
+function createSummaryMetricCard(
+  label,
+  value,
+  { primary = false, overline = null, unit = null } = {},
+) {
   const card = document.createElement("article");
   card.className = primary
     ? "hero-summary-card hero-summary-card--primary"
     : "hero-summary-card";
+  if (overline) {
+    const overlineNode = document.createElement("p");
+    overlineNode.className = "hero-summary-overline";
+    overlineNode.textContent = overline;
+    card.append(overlineNode);
+  }
 
   const labelNode = document.createElement("p");
   labelNode.className = "hero-summary-label";
@@ -837,8 +885,13 @@ function createSummaryMetricCard(label, value, { primary = false } = {}) {
   const valueNode = document.createElement("p");
   valueNode.className = "hero-summary-value";
   valueNode.textContent = value;
-
   card.append(labelNode, valueNode);
+  if (unit) {
+    const unitNode = document.createElement("p");
+    unitNode.className = "hero-summary-unit";
+    unitNode.textContent = unit;
+    card.append(unitNode);
+  }
   return card;
 }
 
@@ -866,6 +919,33 @@ function createProductionSummary(rows) {
 
   return section;
 }
+function createProcessingSummaryBlock(title, rows) {
+  const block = document.createElement("section");
+  block.className = "processing-summary-block";
+
+  const heading = document.createElement("p");
+  heading.className = "processing-summary-heading";
+  heading.textContent = title;
+  block.append(heading);
+
+  rows.forEach(({ label, value }) => {
+    const row = document.createElement("div");
+    row.className = "processing-summary-row";
+
+    const labelNode = document.createElement("p");
+    labelNode.className = "processing-summary-label";
+    labelNode.textContent = label;
+
+    const valueNode = document.createElement("p");
+    valueNode.className = "processing-summary-value";
+    valueNode.textContent = value;
+
+    row.append(labelNode, valueNode);
+    block.append(row);
+  });
+
+  return block;
+}
 
 function renderEggOutputSummary(node, result) {
   clearNode(node);
@@ -874,26 +954,38 @@ function renderEggOutputSummary(node, result) {
   hero.className = "hero-summary";
   hero.append(
     createSummaryMetricCard(
-      translatePhrase("Recommended Price / Dozen"),
+      translatePhrase("Recommended Price"),
       formatMoney(result.pricePerDozen),
-      { primary: true },
+      {
+        primary: true,
+        unit: translatePhrase("Per Dozen"),
+      },
     ),
   );
+  const grossMarginPercent =
+    result.pricePerDozen > 0
+      ? (result.profitPerDozen / result.pricePerDozen) * 100
+      : 0;
 
   const supporting = document.createElement("div");
   supporting.className = "hero-summary-grid";
   supporting.append(
     createSummaryMetricCard(
-      translatePhrase("Cost / Dozen"),
+      translatePhrase("Cost per Dozen"),
       formatMoney(result.costPerDozen),
+      { overline: "💲" },
     ),
     createSummaryMetricCard(
-      translatePhrase("Profit / Dozen"),
+      translatePhrase("Gross Margin per Dozen"),
       formatMoney(result.profitPerDozen),
+      {
+        overline: `${formatGroupedNumber(grossMarginPercent, 0)}%`,
+      },
     ),
     createSummaryMetricCard(
-      translatePhrase("Average Dozen / Hen / Year"),
+      translatePhrase("Dozen/Hen/Year"),
       formatGroupedNumber(result.averageDozenPerHenPerYear, 1),
+      { overline: "📊" },
     ),
   );
   hero.append(supporting);
@@ -902,15 +994,15 @@ function renderEggOutputSummary(node, result) {
   node.append(
     createProductionSummary([
       {
-        label: translatePhrase("Average Dozen / Hen / Year"),
+        label: translatePhrase("Average Dozen per Hen per Year"),
         value: formatGroupedNumber(result.averageDozenPerHenPerYear, 1),
       },
       {
-        label: translatePhrase("Total Eggs / Hen"),
+        label: translatePhrase("Total Eggs per Hen (2 years)"),
         value: formatGroupedNumber(result.totalEggsPerHen, 0),
       },
       {
-        label: translatePhrase("Annual Revenue / Hen"),
+        label: translatePhrase("Annual Revenue per Hen"),
         value: formatMoney(
           result.pricePerDozen * result.averageDozenPerHenPerYear,
         ),
@@ -924,54 +1016,79 @@ function renderMeatOutputSummary(node, state, result) {
 
   const hero = document.createElement("section");
   hero.className = "hero-summary";
+  const recommendationHeading = document.createElement("p");
+  recommendationHeading.className = "hero-summary-section-label";
+  recommendationHeading.textContent = translatePhrase(
+    "Recommended Price per Pound",
+  );
+  hero.append(recommendationHeading);
 
   const primaryGrid = document.createElement("div");
   primaryGrid.className = "hero-summary-primary-grid";
   primaryGrid.append(
     createSummaryMetricCard(
-      translatePhrase("Recommended Price / lb (Sent Out)"),
+      translatePhrase("Sent Out Processing"),
       formatMoney(result.pricePerPoundSentOut),
-      { primary: true },
+      {
+        primary: true,
+        unit: translatePhrase("per pound"),
+      },
     ),
     createSummaryMetricCard(
-      translatePhrase("Recommended Price / lb (DIY)"),
+      translatePhrase("DIY Processing"),
       formatMoney(result.pricePerPoundDIY),
-      { primary: true },
+      {
+        primary: true,
+        unit: translatePhrase("per pound"),
+      },
     ),
   );
   hero.append(primaryGrid);
-
-  const supporting = document.createElement("div");
-  supporting.className = "hero-summary-grid";
-  supporting.append(
-    createSummaryMetricCard(
-      translatePhrase("Total Cost / Bird (Sent Out)"),
-      formatMoney(result.totalCostPerBirdSentOut),
-    ),
-    createSummaryMetricCard(
-      translatePhrase("Cost / lb (Sent Out)"),
-      formatMoney(result.costPerPoundSentOut),
-    ),
-    createSummaryMetricCard(
-      translatePhrase("Total Cost / Bird (DIY)"),
-      formatMoney(result.totalCostPerBirdDIY),
-    ),
-    createSummaryMetricCard(
-      translatePhrase("Cost / lb (DIY)"),
-      formatMoney(result.costPerPoundDIY),
-    ),
+  const processingGrid = document.createElement("div");
+  processingGrid.className = "processing-summary-grid";
+  processingGrid.append(
+    createProcessingSummaryBlock(translatePhrase("Sent Out"), [
+      {
+        label: translatePhrase("Cost per Bird"),
+        value: formatMoney(result.totalCostPerBirdSentOut),
+      },
+      {
+        label: translatePhrase("Cost per Pound"),
+        value: formatMoney(result.costPerPoundSentOut),
+      },
+      {
+        label: translatePhrase("Gross Margin per Pound"),
+        value: formatMoney(
+          result.pricePerPoundSentOut - result.costPerPoundSentOut,
+        ),
+      },
+    ]),
+    createProcessingSummaryBlock(translatePhrase("DIY"), [
+      {
+        label: translatePhrase("Cost per Bird"),
+        value: formatMoney(result.totalCostPerBirdDIY),
+      },
+      {
+        label: translatePhrase("Cost per Pound"),
+        value: formatMoney(result.costPerPoundDIY),
+      },
+      {
+        label: translatePhrase("Gross Margin per Pound"),
+        value: formatMoney(result.pricePerPoundDIY - result.costPerPoundDIY),
+      },
+    ]),
   );
-  hero.append(supporting);
+  hero.append(processingGrid);
 
   const strip = document.createElement("div");
   strip.className = "hero-summary-strip";
   strip.append(
     createSummaryMetricCard(
-      translatePhrase("Desired Gross Margin"),
+      translatePhrase("Gross Margin"),
       `${formatGroupedNumber(state.desiredMargin, 0)}%`,
     ),
     createSummaryMetricCard(
-      translatePhrase("Average Dressed Weight"),
+      translatePhrase("Avg. Weight"),
       `${formatGroupedNumber(state.averageWeight, 1)} ${translatePhrase(
         "lbs",
       )}`,
@@ -983,11 +1100,11 @@ function renderMeatOutputSummary(node, state, result) {
   node.append(
     createProductionSummary([
       {
-        label: translatePhrase("Birds Finished Annually"),
+        label: translatePhrase("Birds Finished (Annual)"),
         value: formatGroupedNumber(state.birdsFinished, 0),
       },
       {
-        label: translatePhrase("Average Dressed Weight"),
+        label: translatePhrase("Avg. Dressed Weight"),
         value: `${formatGroupedNumber(
           state.averageWeight,
           1,
@@ -1008,7 +1125,6 @@ function initEggPage() {
   const fieldsNode = document.getElementById("fields");
   const summaryNode = document.getElementById("summary");
   const breakdownNode = document.getElementById("breakdown");
-  const breakdownHeading = breakdownNode?.previousElementSibling;
   const resetButton = document.getElementById("reset-defaults");
 
   let state = { ...EGG_DEFAULTS };
@@ -1018,8 +1134,8 @@ function initEggPage() {
   const breakdownToggle = document.createElement("button");
   breakdownToggle.type = "button";
   breakdownToggle.className = "breakdown-toggle";
-  if (breakdownHeading) {
-    breakdownHeading.insertAdjacentElement("afterend", breakdownToggle);
+  if (breakdownNode?.parentElement) {
+    breakdownNode.parentElement.insertBefore(breakdownToggle, breakdownNode);
   }
   breakdownToggle.addEventListener("click", () => {
     isBreakdownOpen = !isBreakdownOpen;
@@ -1030,9 +1146,7 @@ function initEggPage() {
     breakdownNode.hidden = !isBreakdownOpen;
     breakdownToggle.classList.toggle("is-open", isBreakdownOpen);
     breakdownToggle.setAttribute("aria-expanded", String(isBreakdownOpen));
-    breakdownToggle.textContent = isBreakdownOpen
-      ? translatePhrase("Hide Cost Breakdown")
-      : translatePhrase("Show Cost Breakdown");
+    breakdownToggle.textContent = translatePhrase("Cost Breakdown");
   }
 
   function toggleCategory(category) {
@@ -1061,7 +1175,7 @@ function initEggPage() {
   }
 
   function buildForm() {
-    renderGroupedFields(fieldsNode, EGG_FIELDS, state, updateField, {
+    renderGroupedFields(fieldsNode, EGG_VISIBLE_FIELDS, state, updateField, {
       openCategories,
       onToggleCategory: toggleCategory,
     });
@@ -1074,6 +1188,7 @@ function initEggPage() {
   });
 
   onLanguageChange(() => {
+    renderResetLabel();
     buildForm();
     updateOutputs();
   });
@@ -1086,7 +1201,6 @@ function initMeatPage() {
   const fieldsNode = document.getElementById("fields");
   const summaryNode = document.getElementById("summary");
   const breakdownNode = document.getElementById("breakdown");
-  const breakdownHeading = breakdownNode?.previousElementSibling;
   const resetButton = document.getElementById("reset-defaults");
 
   let state = { ...MEAT_DEFAULTS };
@@ -1096,8 +1210,8 @@ function initMeatPage() {
   const breakdownToggle = document.createElement("button");
   breakdownToggle.type = "button";
   breakdownToggle.className = "breakdown-toggle";
-  if (breakdownHeading) {
-    breakdownHeading.insertAdjacentElement("afterend", breakdownToggle);
+  if (breakdownNode?.parentElement) {
+    breakdownNode.parentElement.insertBefore(breakdownToggle, breakdownNode);
   }
   breakdownToggle.addEventListener("click", () => {
     isBreakdownOpen = !isBreakdownOpen;
@@ -1108,9 +1222,7 @@ function initMeatPage() {
     breakdownNode.hidden = !isBreakdownOpen;
     breakdownToggle.classList.toggle("is-open", isBreakdownOpen);
     breakdownToggle.setAttribute("aria-expanded", String(isBreakdownOpen));
-    breakdownToggle.textContent = isBreakdownOpen
-      ? translatePhrase("Hide Cost Breakdown")
-      : translatePhrase("Show Cost Breakdown");
+    breakdownToggle.textContent = translatePhrase("Cost Breakdown");
   }
 
   function toggleCategory(category) {
@@ -1209,17 +1321,16 @@ function initStockPage() {
   const fieldsNode = document.getElementById("fields");
   const summaryNode = document.getElementById("summary");
   const breakdownNode = document.getElementById("breakdown");
-  const breakdownHeading = breakdownNode?.previousElementSibling;
   const resetButton = document.getElementById("reset-defaults");
-
-  if (breakdownHeading) {
-    breakdownHeading.hidden = true;
-  }
   breakdownNode.hidden = true;
 
   let mode = "single";
   let singleState = { ...STOCK_SINGLE_DEFAULTS };
   let mixedState = cloneMixedDefaults();
+
+  function renderResetLabel() {
+    resetButton.textContent = translatePhrase("Reset");
+  }
 
   function renderModeToggle() {
     clearNode(modeNode);
@@ -1647,10 +1758,12 @@ function initStockPage() {
   });
 
   onLanguageChange(() => {
+    renderResetLabel();
     renderModeToggle();
     renderFields();
     renderOutputs();
   });
+  renderResetLabel();
 
   renderModeToggle();
   renderFields();

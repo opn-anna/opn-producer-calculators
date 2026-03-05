@@ -3,23 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title data-i18n="meta.home.title">Producer Calculators</title>
+    <title data-i18n="meta.home.title">
+      Egg Price Calculator | Animal Agriculture Reform Collaborative
+    </title>
     <meta
       name="description"
-      content="Choose a calculator."
+      content="Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs"
       data-i18n-content="meta.home.description"
     />
     <link rel="stylesheet" href="/app.css" />
   </head>
-  <body data-page="home">
+  <body data-calculator="egg" data-page="egg">
     <header class="page-header">
-      <h1 data-i18n="page.home.title">Producer Calculators</h1>
-      <p data-i18n="page.home.description">Choose a calculator.</p>
+      <div class="brand-mark">
+        <span class="brand-mark-text">Oregon Pasture Network</span>
+      </div>
+      <h1 data-i18n="page.home.title">Egg Price Calculator</h1>
+      <p data-i18n="page.home.description">
+        Calculate the true cost of production to ensure sustainable pricing for
+        your pasture-raised eggs
+      </p>
       <nav class="page-nav">
-        <a href="/" data-i18n="nav.home">Home</a>
-        <a href="/egg-price/" data-i18n="nav.egg">Egg Price</a>
-        <a href="/meat-price/" data-i18n="nav.meat">Meat Chicken Price</a>
-        <a href="/stock-density/" data-i18n="nav.stock">Stock Density</a>
+        <a href="/" data-i18n="nav.egg">Egg Price</a>
+        <a href="/meat-price" data-i18n="nav.meat">Meat Price</a>
+        <a href="/stock-density" data-i18n="nav.stock">Stock Density</a>
       </nav>
       <div class="language-switch">
         <span class="language-switch-label" data-i18n="language.label"
@@ -31,26 +38,18 @@
         </div>
       </div>
     </header>
-    <main class="layout landing-layout">
+    <main class="layout">
       <section class="panel">
-        <h2 data-i18n="home.calculators.heading">Calculators</h2>
-        <ul class="calculator-links">
-          <li>
-            <a href="/egg-price/" data-i18n="home.calculators.egg"
-              >Egg Price Calculator</a
-            >
-          </li>
-          <li>
-            <a href="/meat-price/" data-i18n="home.calculators.meat"
-              >Meat Chicken Price Calculator</a
-            >
-          </li>
-          <li>
-            <a href="/stock-density/" data-i18n="home.calculators.stock"
-              >Stock Density Calculator</a
-            >
-          </li>
-        </ul>
+        <div class="panel-header">
+          <button id="reset-defaults" type="button" data-i18n="common.reset">
+            Reset to Defaults
+          </button>
+        </div>
+        <div id="fields"></div>
+      </section>
+      <section class="panel">
+        <div id="summary" aria-live="polite"></div>
+        <div id="breakdown"></div>
       </section>
     </main>
     <script type="module" src="/src/app.mjs"></script>
