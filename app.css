@@ -46,6 +46,7 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 1.1rem 1.4rem 1rem;
   box-shadow: var(--shadow-sm);
+  text-align: center;
 }
 
 .brand-mark {
@@ -76,7 +77,7 @@ body {
 }
 
 .page-header p {
-  margin: 0.45rem 0 0;
+  margin: 0.45rem auto 0;
   color: var(--text-muted);
   max-width: 74ch;
 }
@@ -86,6 +87,7 @@ body {
   display: flex;
   gap: 0.55rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .page-nav a {
@@ -146,6 +148,7 @@ body[data-page="stock"] .page-nav a[href="/stock-density/"]::before {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .language-switch-label {
