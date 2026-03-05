@@ -208,6 +208,7 @@ body[data-page="stock"] .page-nav a[href="/stock-density/"]::before {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  justify-content: center;
 }
 
 .footer-links a {
