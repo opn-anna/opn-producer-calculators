@@ -14,6 +14,15 @@ import {
   computeStockMixed,
 } from "/src/calculators.mjs";
 
+/**
+ * Safe PostHog capture — no-ops when PostHog is not loaded.
+ * @param {string} event
+ * @param {Record<string, unknown>} [props]
+ */
+function phCapture(event, props) {
+  window.posthog?.capture(event, props);
+}
+
 const CATEGORY_TITLES = {
   labor: "Labor & General",
   chicks: "Chicks",
@@ -1145,6 +1154,10 @@ function initEggPage() {
   }
   breakdownToggle.addEventListener("click", () => {
     isBreakdownOpen = !isBreakdownOpen;
+    phCapture(
+      isBreakdownOpen ? "breakdown_toggle_opened" : "breakdown_toggle_closed",
+      { calculator_type: "egg" },
+    );
     renderBreakdownVisibility();
   });
 
@@ -1189,6 +1202,7 @@ function initEggPage() {
 
   resetButton.addEventListener("click", () => {
     state = { ...EGG_DEFAULTS };
+    phCapture("calculator_reset", { calculator_type: "egg" });
     buildForm();
     updateOutputs();
   });
@@ -1220,6 +1234,10 @@ function initMeatPage() {
   }
   breakdownToggle.addEventListener("click", () => {
     isBreakdownOpen = !isBreakdownOpen;
+    phCapture(
+      isBreakdownOpen ? "breakdown_toggle_opened" : "breakdown_toggle_closed",
+      { calculator_type: "meat" },
+    );
     renderBreakdownVisibility();
   });
 
@@ -1301,6 +1319,7 @@ function initMeatPage() {
 
   resetButton.addEventListener("click", () => {
     state = { ...MEAT_DEFAULTS };
+    phCapture("calculator_reset", { calculator_type: "meat" });
     buildForm();
     updateOutputs();
   });
@@ -1363,6 +1382,7 @@ function initStockPage() {
           return;
         }
         mode = option.value;
+        phCapture("stock_density_mode_changed", { mode });
         renderModeToggle();
         renderFields();
         renderOutputs();
@@ -1757,6 +1777,7 @@ function initStockPage() {
     mode = "single";
     singleState = { ...STOCK_SINGLE_DEFAULTS };
     mixedState = cloneMixedDefaults();
+    phCapture("calculator_reset", { calculator_type: "stock" });
     renderModeToggle();
     renderFields();
     renderOutputs();
@@ -1775,6 +1796,91 @@ function initStockPage() {
   renderOutputs();
 }
 
+function initFeedbackButton() {
+  const SURVEY_ID = "019c0dbb-3fb4-0000-cef7-25d59f3b5928";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "feedback-btn";
+  btn.setAttribute("aria-label", "Give feedback");
+  btn.textContent = "Feedback";
+  document.body.appendChild(btn);
+
+  const overlay = document.createElement("div");
+  overlay.className = "feedback-modal-overlay";
+  overlay.hidden = true;
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Send feedback");
+
+  const modal = document.createElement("div");
+  modal.className = "feedback-modal";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "feedback-modal-close";
+  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.textContent = "\u00d7";
+
+  const heading = document.createElement("h3");
+  heading.className = "feedback-modal-heading";
+  heading.textContent = "Share Your Feedback";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "feedback-modal-textarea";
+  textarea.placeholder = "What feedback do you have for us?";
+  textarea.rows = 4;
+
+  const submitBtn = document.createElement("button");
+  submitBtn.type = "button";
+  submitBtn.className = "feedback-modal-submit";
+  submitBtn.textContent = "Send";
+
+  const thanks = document.createElement("p");
+  thanks.className = "feedback-modal-thanks";
+  thanks.hidden = true;
+  thanks.textContent = "Thanks for your feedback!";
+
+  modal.append(closeBtn, heading, textarea, submitBtn, thanks);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  function openModal() {
+    textarea.hidden = false;
+    submitBtn.hidden = false;
+    thanks.hidden = true;
+    textarea.value = "";
+    overlay.hidden = false;
+    textarea.focus();
+  }
+
+  function closeModal() {
+    overlay.hidden = true;
+  }
+
+  btn.addEventListener("click", openModal);
+  closeBtn.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !overlay.hidden) closeModal();
+  });
+
+  submitBtn.addEventListener("click", () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    window.posthog?.capture("survey sent", {
+      $survey_id: SURVEY_ID,
+      $survey_response: text,
+    });
+    textarea.hidden = true;
+    submitBtn.hidden = true;
+    thanks.hidden = false;
+    setTimeout(closeModal, 1800);
+  });
+}
+
 initLanguageControls();
 
 const page = document.body.dataset.calculator;
@@ -1785,3 +1891,5 @@ if (page === "egg") {
 } else if (page === "stock") {
   initStockPage();
 }
+
+initFeedbackButton();

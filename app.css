@@ -1006,6 +1006,119 @@ tbody tr:hover {
   }
 }
 
+/* Feedback button and modal */
+.feedback-btn {
+  position: fixed;
+  bottom: 1.4rem;
+  right: 1.4rem;
+  z-index: 90;
+  padding: 0.55rem 1.1rem;
+  background: var(--brand);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    0 2px 8px rgba(29, 78, 216, 0.3),
+    var(--shadow-sm);
+  transition: background 0.15s;
+}
+.feedback-btn:hover {
+  background: var(--brand-strong);
+}
+
+.feedback-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.feedback-modal-overlay[hidden] {
+  display: none;
+}
+
+.feedback-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.4rem 1.5rem 1.3rem;
+  width: min(100%, 26rem);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.16);
+  position: relative;
+}
+
+.feedback-modal-close {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.9rem;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+.feedback-modal-close:hover {
+  color: var(--text);
+  background: var(--bg-accent);
+}
+
+.feedback-modal-heading {
+  margin: 0 0 0.9rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.feedback-modal-textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-family: inherit;
+  font-size: 0.93rem;
+  color: var(--text);
+  resize: vertical;
+  min-height: 7rem;
+  display: block;
+  box-sizing: border-box;
+}
+.feedback-modal-textarea:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.feedback-modal-submit {
+  margin-top: 0.75rem;
+  padding: 0.52rem 1.1rem;
+  background: var(--brand);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.93rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.feedback-modal-submit:hover {
+  background: var(--brand-strong);
+}
+
+.feedback-modal-thanks {
+  margin: 0.6rem 0 0;
+  font-size: 0.97rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 @media (max-width: 760px) {
   .page-header {
     padding: 0.9rem 0.9rem 0.85rem;
