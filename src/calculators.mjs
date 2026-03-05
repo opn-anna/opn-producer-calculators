@@ -640,6 +640,11 @@ export const MEAT_FIELDS = [
   control: field.control ?? "slider+number",
 }));
 
+/**
+ * Build a defaults object from a field definition array.
+ * @param {Array<{key: string, defaultValue: number}>} fields
+ * @returns {Record<string, number>}
+ */
 function createDefaults(fields) {
   return Object.fromEntries(
     fields.map((field) => [field.key, field.defaultValue]),
@@ -698,36 +703,83 @@ export const STOCK_MIXED_DEFAULTS = {
   movesPerDay: 1,
 };
 
+/**
+ * Calculate recommended egg pricing from per-bird cost inputs.
+ *
+ * Note: `chicksStarterFeedCost` and `chicksStarterFeedSize` appear in
+ * EGG_FIELDS (brooding category) but are not used here — the starter feed
+ * cost is the hardcoded constant $8.51/chick from the original spreadsheet.
+ * The chicks category (chicksCount, chicksCost, chickMortalityRate) is also
+ * present in the schema but hidden from the UI via EGG_VISIBLE_FIELDS.
+ *
+ * @param {Partial<typeof EGG_DEFAULTS>} input
+ * @returns {{
+ *   pricePerDozen: number,
+ *   costPerDozen: number,
+ *   profitPerDozen: number,
+ *   averageDozenPerHenPerYear: number,
+ *   totalEggsPerHen: number,
+ *   costBreakdown: Record<string, number>
+ * }}
+ */
 export function computeEggPricing(input) {
   const e = { ...EGG_DEFAULTS, ...input };
-  const u = Math.max(0.01, 1 - e.chickMortalityRate / 100);
-  const c = Math.max(1, e.chicksCount);
-  const f = e.chicksCost / c / u;
+
+  // Chick purchase cost per surviving bird
+  const u = Math.max(0.01, 1 - e.chickMortalityRate / 100); // chick survival rate
+  const c = Math.max(1, e.chicksCount); // safe chick count
+  const f = e.chicksCost / c / u; // chick cost per surviving bird
+
+  // Brooding cost per chick: labor + fixed starter feed constant from original spreadsheet.
+  // 126 is a fixed total brooding labor hours constant (not derived from broodingDays).
+  // $8.51 is the per-chick starter feed cost from the original spreadsheet calculation.
   const g = (e.broodingHoursPerDay * 126 * e.laborRate) / c + 8.51;
-  const h = e.feedPricePerUnit / e.feedUnitSize / 16;
-  const v = e.feedConsumedPerDay * 365 * h;
+
+  // Annual feed cost per laying bird
+  const h = e.feedPricePerUnit / e.feedUnitSize / 16; // feed price per oz (unit size in lbs → oz)
+  const v = e.feedConsumedPerDay * 365 * h; // annual feed cost per bird
+
+  // Infrastructure cost per bird per year (capital amortized + annual repairs)
   const y =
     (e.buildingMaterialsCost / e.yearsOfLife + e.annualRepairs) / e.flockSize;
-  const m = (e.layingLaborHoursPerDay * 365 * e.laborRate) / e.flockSize;
-  const b = e.milesPerDelivery * e.deliveriesPerYear * e.costPerMile;
-  const S = e.laborHoursPerDelivery * e.deliveriesPerYear * e.laborRate;
-  const w = (b + S) / e.flockSize;
-  const P = e.feedPickupHoursPerTrip * e.feedPickupTripsPerYear * e.laborRate;
-  const E = e.feedPickupMileage * e.feedPickupTripsPerYear * e.costPerMile;
-  const O = (P + E) / e.flockSize;
 
-  let C = 0;
+  // Laying labor cost per bird per year
+  const m = (e.layingLaborHoursPerDay * 365 * e.laborRate) / e.flockSize;
+
+  // Distribution cost per bird per year (delivery mileage + delivery labor)
+  const b = e.milesPerDelivery * e.deliveriesPerYear * e.costPerMile; // annual delivery mileage cost
+  const S = e.laborHoursPerDelivery * e.deliveriesPerYear * e.laborRate; // annual delivery labor cost
+  const w = (b + S) / e.flockSize; // distribution cost per bird
+
+  // Feed pickup cost per bird per year
+  const P = e.feedPickupHoursPerTrip * e.feedPickupTripsPerYear * e.laborRate; // pickup labor
+  const E = e.feedPickupMileage * e.feedPickupTripsPerYear * e.costPerMile; // pickup mileage
+  const O = (P + E) / e.flockSize; // feed pickup cost per bird
+
+  // Total eggs per hen across all kept years. Lay rate declines 20% per year
+  // relative to the year-1 rate (e.g. year 2 = 80%, year 3 = 60%).
+  let C = 0; // total eggs per hen over yearsToKeepHen
   for (let year = 1; year <= e.yearsToKeepHen; year += 1) {
     const declineMultiplier = 1 - (year - 1) * 0.2;
     C += e.layRateYear1 * declineMultiplier;
   }
 
-  const k = C / e.yearsToKeepHen / 12;
+  const k = C / e.yearsToKeepHen / 12; // average dozen per hen per year
+
+  // Stew hen credit spread across the hen's productive years
   const A = e.stewHenNetValue / e.yearsToKeepHen;
-  const broodingTotal = (f + g) / e.yearsToKeepHen;
+
+  // Brooding cost amortized across productive years
+  const broodingTotal = (f + g) / e.yearsToKeepHen; // amortized brooding cost per bird per year
+
+  // Base cost per dozen: sum all per-bird-per-year costs, subtract credit, divide by output
   const N = (broodingTotal + v + y + m + w + O - A) / k;
-  const I = e.eggCartonCost;
-  const R = N + I;
+
+  // Carton and total cost per dozen
+  const I = e.eggCartonCost; // carton cost per dozen
+  const R = N + I; // total cost per dozen
+
+  // Recommended price per dozen (gross margin applied on top of cost)
   const L = R / (1 - e.desiredMargin / 100);
 
   const costBreakdown = {
@@ -751,49 +803,84 @@ export function computeEggPricing(input) {
   };
 }
 
+/**
+ * Calculate recommended meat chicken pricing from per-bird cost inputs.
+ * Produces two parallel price paths: sent-out processing and DIY processing.
+ *
+ * @param {Partial<typeof MEAT_DEFAULTS>} input
+ * @returns {{
+ *   pricePerPoundSentOut: number,
+ *   pricePerPoundDIY: number,
+ *   costPerPoundSentOut: number,
+ *   costPerPoundDIY: number,
+ *   totalCostPerBirdSentOut: number,
+ *   totalCostPerBirdDIY: number,
+ *   costBreakdown: Record<string, number>
+ * }}
+ */
 export function computeMeatPricing(input) {
   const e = { ...MEAT_DEFAULTS, ...input };
 
-  const d = Math.max(1, e.chicksCount);
-  const p = Math.max(0.01, 1 - e.chickMortalityRate / 100);
-  const g = Math.max(1, e.birdsFinished);
-  const h = Math.max(1, e.processingBirdsProcessed);
-  const v = Math.max(1, e.diyEquipmentLifespan);
-  const y = Math.max(1, e.diyBirdsPerYear);
-  const m = Math.max(1, e.diyBirdsPerDay);
-  const b = Math.max(0.1, e.averageWeight);
-  const S = Math.max(0.01, 1 - e.desiredMargin / 100);
-  const w = Math.max(1, e.tractorLifespanYears);
-  const P = Math.max(1, e.birdsPerTractorPerBatch);
-  const E = Math.max(1, e.batchesPerYearPerTractor);
+  // Safe denominators — prevent division by zero on edge-case inputs
+  const d = Math.max(1, e.chicksCount); // safe chick count per batch
+  const p = Math.max(0.01, 1 - e.chickMortalityRate / 100); // chick survival rate
+  const g = Math.max(1, e.birdsFinished); // safe birds finished annually
+  const h = Math.max(1, e.processingBirdsProcessed); // safe birds per sent-out processing run
+  const v = Math.max(1, e.diyEquipmentLifespan); // safe DIY equipment lifespan (years)
+  const y = Math.max(1, e.diyBirdsPerYear); // safe DIY birds processed per year
+  const m = Math.max(1, e.diyBirdsPerDay); // safe DIY birds processed per day
+  const b = Math.max(0.1, e.averageWeight); // safe average dressed weight (lbs)
+  const S = Math.max(0.01, 1 - e.desiredMargin / 100); // safe gross margin denominator
+  const w = Math.max(1, e.tractorLifespanYears); // safe tractor lifespan (years)
+  const P = Math.max(1, e.birdsPerTractorPerBatch); // safe birds per tractor per batch
+  const E = Math.max(1, e.batchesPerYearPerTractor); // safe batches per year per tractor
 
+  // Chick purchase cost per surviving bird
   const O = e.chicksTotalCost / d / p;
-  const C = (e.beddingCostPerUnit * e.beddingUnitsPerBatch) / d;
-  const k = (e.broodingHoursPerDay * e.broodingDays * e.laborRate) / d;
-  const A = C + k;
-  const feedPerBirdAnnual = e.annualFeedCost / g;
-  const feed = (feedPerBirdAnnual * d) / g;
-  const D = e.tractorMaterialsCost / w + e.annualRepairCost;
-  const N = P * E;
-  const I = D / N;
+
+  // Brooding cost per bird (bedding + labor)
+  const C = (e.beddingCostPerUnit * e.beddingUnitsPerBatch) / d; // bedding cost per bird
+  const k = (e.broodingHoursPerDay * e.broodingDays * e.laborRate) / d; // brooding labor per bird
+  const A = C + k; // total brooding cost per bird
+
+  // Feed cost per bird, scaled by the ratio of chicksCount to birdsFinished
+  const feedPerBirdAnnual = e.annualFeedCost / g; // annual feed cost per finished bird
+  const feed = (feedPerBirdAnnual * d) / g; // feed cost per starting chick, normalized to batch size
+
+  // Infrastructure: chicken tractor depreciation + annual repairs, spread across birds per tractor per year
+  const D = e.tractorMaterialsCost / w + e.annualRepairCost; // annual tractor cost
+  const N = P * E; // birds per tractor per year
+  const I = D / N; // infrastructure cost per bird
+
+  // Field labor cost per bird
   const R = (e.daysInField * e.fieldHoursPerDay * e.laborRate) / d;
-  const L = e.processingTravelTime * e.laborRate;
-  const j = e.processingMileage * e.irsMileageRate;
-  const M = (e.processingTotalCost + L + j) / h;
-  const B = e.diyEquipmentCost / v / y;
-  const V = (e.diyCrewSize * e.diyHoursPerPerson * e.laborRate) / m;
-  const F = e.diyPackagingCost + e.diyLabelCost + e.diyPropaneCost / m;
-  const q = B + V + F;
-  const Y = e.feedPickupTravelTime * e.feedPickupTripsPerBatch * e.laborRate;
-  const se = e.feedPickupMiles * e.feedPickupTripsPerBatch * e.irsMileageRate;
-  const de = (Y + se) / d;
-  const X = O + A + feed + I + R + de;
-  const fe = X + M;
-  const G = X + q;
-  const Q = fe / b;
-  const Z = G / b;
-  const U = Q / S;
-  const ve = Z / S;
+
+  // Processing — Sent Out: service fee + travel labor + travel mileage, divided by birds in the run
+  const L = e.processingTravelTime * e.laborRate; // travel labor cost
+  const j = e.processingMileage * e.irsMileageRate; // travel mileage cost
+  const M = (e.processingTotalCost + L + j) / h; // sent-out processing cost per bird
+
+  // Processing — DIY: equipment depreciation + processing-day labor + supplies per bird
+  const B = e.diyEquipmentCost / v / y; // equipment cost per bird
+  const V = (e.diyCrewSize * e.diyHoursPerPerson * e.laborRate) / m; // labor cost per bird
+  const F = e.diyPackagingCost + e.diyLabelCost + e.diyPropaneCost / m; // supplies cost per bird
+  const q = B + V + F; // total DIY processing cost per bird
+
+  // Feed pickup cost per bird (shared across both processing paths)
+  const Y = e.feedPickupTravelTime * e.feedPickupTripsPerBatch * e.laborRate; // pickup labor per batch
+  const se = e.feedPickupMiles * e.feedPickupTripsPerBatch * e.irsMileageRate; // pickup mileage per batch
+  const de = (Y + se) / d; // feed pickup cost per bird
+
+  // Total cost per bird: base (shared) + processing-path-specific cost
+  const X = O + A + feed + I + R + de; // base cost per bird (pre-processing)
+  const fe = X + M; // total cost per bird — Sent Out
+  const G = X + q; // total cost per bird — DIY
+
+  // Cost per pound and price per pound (gross margin applied)
+  const Q = fe / b; // cost per pound — Sent Out
+  const Z = G / b; // cost per pound — DIY
+  const U = Q / S; // price per pound — Sent Out
+  const ve = Z / S; // price per pound — DIY
 
   return {
     pricePerPoundSentOut: U,
@@ -815,24 +902,49 @@ export function computeMeatPricing(input) {
   };
 }
 
+/**
+ * Estimate standing forage mass from canopy height and ground-coverage density.
+ * @param {number} height - Average forage height in inches.
+ * @param {number} densityLevel - Key into FORAGE_DENSITY_LEVELS (1 | 2 | 3).
+ * @returns {number} Estimated forage lbs per acre.
+ */
 function forageLbsPerAcre(height, densityLevel) {
   const level = FORAGE_DENSITY_LEVELS[densityLevel] ?? FORAGE_DENSITY_LEVELS[2];
   return height * level.multiplier;
 }
 
+/**
+ * Calculate daily paddock requirements for a single-class herd.
+ *
+ * @param {Partial<typeof STOCK_SINGLE_DEFAULTS>} input
+ * @returns {{
+ *   forageLbsPerAcre: number,
+ *   totalAnimalWeight: number,
+ *   dryMatterPercent: number,
+ *   dryMatterNeededPerDay: number,
+ *   dryMatterAvailable: number,
+ *   acresNeededPerDay: number,
+ *   squareFeet: number,
+ *   paddockWidth: number,
+ *   stockingDensityPerAcre: number,
+ *   paddockSizeWithMoves: number,
+ *   stockingDensityWithMoves: number
+ * }}
+ */
 export function computeStockSingle(input) {
   const e = { ...STOCK_SINGLE_DEFAULTS, ...input };
-  const t = forageLbsPerAcre(e.forageHeight, e.forageDensity);
-  const r = e.numberOfHead * e.averageWeight;
-  const n = ANIMAL_CLASSES[e.animalClass].dryMatterPercent;
-  const i = r * n;
-  const o = e.utilizationPercent > 0 ? t * (e.utilizationPercent / 100) : 0;
-  const a = o > 0 ? i / o : 0;
-  const s = a * 43560;
-  const l = e.paddockSideLength > 0 ? s / e.paddockSideLength : 0;
-  const u = a > 0 ? r / a : 0;
-  const c = e.movesPerDay > 0 ? a / e.movesPerDay : 0;
-  const f = c > 0 ? r / c : 0;
+
+  const t = forageLbsPerAcre(e.forageHeight, e.forageDensity); // forage lbs per acre
+  const r = e.numberOfHead * e.averageWeight; // total herd weight (lbs)
+  const n = ANIMAL_CLASSES[e.animalClass].dryMatterPercent; // dry matter intake as % of body weight
+  const i = r * n; // dry matter needed per day (lbs)
+  const o = e.utilizationPercent > 0 ? t * (e.utilizationPercent / 100) : 0; // dry matter available per acre at utilization goal
+  const a = o > 0 ? i / o : 0; // acres needed per day
+  const s = a * 43560; // square feet per day (1 acre = 43,560 sq ft)
+  const l = e.paddockSideLength > 0 ? s / e.paddockSideLength : 0; // calculated paddock width (ft)
+  const u = a > 0 ? r / a : 0; // stocking density (lbs/acre)
+  const c = e.movesPerDay > 0 ? a / e.movesPerDay : 0; // paddock size per move (acres)
+  const f = c > 0 ? r / c : 0; // stocking density per move (lbs/acre)
 
   return {
     forageLbsPerAcre: t,
@@ -849,6 +961,27 @@ export function computeStockSingle(input) {
   };
 }
 
+/**
+ * Calculate daily paddock requirements for a mixed-class herd.
+ * Each animal class contributes its own dry matter demand based on its
+ * species-specific intake percentage.
+ *
+ * @param {Partial<typeof STOCK_MIXED_DEFAULTS>} input
+ * @returns {{
+ *   forageLbsPerAcre: number,
+ *   totalAnimalWeight: number,
+ *   weightedDryMatterPercent: number,
+ *   totalDryMatterNeeded: number,
+ *   dryMatterAvailable: number,
+ *   acresNeededPerDay: number,
+ *   squareFeet: number,
+ *   paddockWidth: number,
+ *   stockingDensityPerAcre: number,
+ *   paddockSizeWithMoves: number,
+ *   stockingDensityWithMoves: number,
+ *   animalBreakdown: Array<object>
+ * }}
+ */
 export function computeStockMixed(input) {
   const e = {
     ...STOCK_MIXED_DEFAULTS,
@@ -856,7 +989,7 @@ export function computeStockMixed(input) {
     animals: { ...STOCK_MIXED_DEFAULTS.animals, ...(input.animals ?? {}) },
   };
 
-  const t = forageLbsPerAcre(e.forageHeight, e.forageDensity);
+  const t = forageLbsPerAcre(e.forageHeight, e.forageDensity); // forage lbs per acre
   let totalAnimalWeight = 0;
   let totalDryMatterNeeded = 0;
 

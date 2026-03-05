@@ -1,3 +1,11 @@
+/**
+ * app.mjs — shared UI wiring for all three calculator pages.
+ *
+ * Each HTML page sets `data-calculator` on <body> to "egg", "meat", or
+ * "stock". The entry-point dispatch at the bottom of this file calls the
+ * corresponding init function. All three share the language system, field
+ * factories, and output-rendering helpers defined here.
+ */
 import {
   EGG_FIELDS,
   MEAT_FIELDS,
@@ -14,6 +22,8 @@ import {
   computeStockMixed,
 } from "/src/calculators.mjs";
 
+// ─── Analytics ──────────────────────────────────────────────────────────────
+
 /**
  * Safe PostHog capture — no-ops when PostHog is not loaded.
  * @param {string} event
@@ -22,6 +32,8 @@ import {
 function phCapture(event, props) {
   window.posthog?.capture(event, props);
 }
+
+// ─── UI Constants ────────────────────────────────────────────────────────────
 
 const CATEGORY_TITLES = {
   labor: "Labor & General",
@@ -69,6 +81,12 @@ const BREAKDOWN_FALLBACK_COLORS = [
 ];
 
 const BREAKDOWN_CREDIT_KEYS = new Set(["stewHenCredit"]);
+
+// ─── Internationalisation (i18n) ─────────────────────────────────────────────
+// STATIC_TRANSLATIONS: keyed strings rendered via data-i18n / data-i18n-content
+// attributes in HTML (page titles, nav labels, meta descriptions).
+// PHRASE_TRANSLATIONS_ES: dynamic phrases translated at runtime inside JS
+// (field labels, output metric names, category headings).
 
 const LANGUAGE_STORAGE_KEY = "opn-calculator-language";
 const SUPPORTED_LANGUAGES = new Set(["en", "es"]);
@@ -351,10 +369,20 @@ const PHRASE_TRANSLATIONS_ES = {
   "Cost Breakdown": "Desglose de costos",
 };
 
+// ─── Language state ──────────────────────────────────────────────────────────
+// currentLanguage is module-level state; setLanguage() is the only write path.
+// Listeners registered via onLanguageChange() are called after each change.
+// fieldIdCounter generates unique DOM ids for label/input pairs.
+
 let currentLanguage = readStoredLanguage();
 const languageChangeListeners = new Set();
 let fieldIdCounter = 0;
 
+/**
+ * Normalise a language tag to a supported value, defaulting to "en".
+ * @param {unknown} language
+ * @returns {"en" | "es"}
+ */
 function normalizeLanguage(language) {
   const candidate = String(language ?? "")
     .trim()
@@ -378,6 +406,13 @@ function persistLanguage(language) {
   }
 }
 
+/**
+ * Look up a STATIC_TRANSLATIONS key for the current language, falling back
+ * to English then to the provided fallback string.
+ * @param {string} key
+ * @param {string} [fallback]
+ * @returns {string}
+ */
 function translateStatic(key, fallback = "") {
   const localized = STATIC_TRANSLATIONS[currentLanguage]?.[key];
   if (localized) {
@@ -387,6 +422,13 @@ function translateStatic(key, fallback = "") {
   return english ?? fallback;
 }
 
+/**
+ * Translate a dynamic phrase via PHRASE_TRANSLATIONS_ES.
+ * Returns the phrase unchanged when the current language is English or the
+ * phrase has no Spanish mapping.
+ * @param {string} phrase
+ * @returns {string}
+ */
 function translatePhrase(phrase) {
   if (currentLanguage === "es") {
     return PHRASE_TRANSLATIONS_ES[phrase] ?? phrase;
@@ -426,6 +468,12 @@ function updateLanguageButtons() {
   });
 }
 
+/**
+ * Set the active language, optionally persisting to localStorage and
+ * notifying registered change listeners.
+ * @param {string} language
+ * @param {{ persist?: boolean, notify?: boolean }} [options]
+ */
 function setLanguage(language, { persist = true, notify = true } = {}) {
   currentLanguage = normalizeLanguage(language);
   if (persist) {
@@ -438,6 +486,12 @@ function setLanguage(language, { persist = true, notify = true } = {}) {
   }
 }
 
+/**
+ * Register a listener that fires after each language change.
+ * Returns an unsubscribe function.
+ * @param {(language: string) => void} listener
+ * @returns {() => void}
+ */
 function onLanguageChange(listener) {
   languageChangeListeners.add(listener);
   return () => languageChangeListeners.delete(listener);
@@ -453,6 +507,13 @@ function initLanguageControls() {
   setLanguage(currentLanguage, { persist: false, notify: false });
 }
 
+// ─── Format helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Generate a unique, stable DOM id from a field key.
+ * @param {string} key
+ * @returns {string}
+ */
 function createFieldId(key) {
   const normalized = String(key)
     .trim()
@@ -463,6 +524,11 @@ function createFieldId(key) {
   return `${normalized || "field"}-${fieldIdCounter}`;
 }
 
+/**
+ * Convert a camelCase or snake_case key to a human-readable Title Case label.
+ * @param {string} value
+ * @returns {string}
+ */
 function humanizeKey(value) {
   return String(value)
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -531,18 +597,43 @@ function normalizeFieldValue(field, rawValue, fallbackValue = 0) {
   return nextValue;
 }
 
+/**
+ * Return the control mode for a field: "slider+number" or "number".
+ * @param {{ control?: string }} field
+ * @returns {"slider+number" | "number"}
+ */
 function getFieldControlMode(field) {
   return field.control === "slider+number" ? "slider+number" : "number";
 }
 
+// ─── DOM helpers ──────────────────────────────────────────────────────────────
+
+/** Remove all children from a DOM node. */
 function clearNode(node) {
   node.innerHTML = "";
 }
 
+/**
+ * Create an SVG element in the SVG namespace.
+ * @param {string} tagName
+ * @returns {SVGElement}
+ */
 function createSvgNode(tagName) {
   return document.createElementNS("http://www.w3.org/2000/svg", tagName);
 }
 
+// ─── Cost breakdown chart ────────────────────────────────────────────────────
+// renderCostBreakdownChart builds a donut SVG + legend for a cost breakdown
+// object. Positive entries appear as arc slices; negative entries (credits)
+// are listed separately below the legend.
+
+/**
+ * Resolve a fill color for a breakdown cost component.
+ * Falls back to a rotation through BREAKDOWN_FALLBACK_COLORS.
+ * @param {string} key
+ * @param {number} index
+ * @returns {string}
+ */
 function resolveBreakdownColor(key, index) {
   return (
     BREAKDOWN_COLORS[key] ??
@@ -706,6 +797,22 @@ function createMeatCostBreakdown(costBreakdown, processingKey) {
   };
 }
 
+// ─── Form field factories ────────────────────────────────────────────────────
+
+/**
+ * Build a labelled number input row, optionally with a synchronised range
+ * slider when field.control === "slider+number".
+ *
+ * The number input and slider (if present) stay in sync: changing either
+ * clamps the value to [min, max], snaps to `step`, then calls `onChange`
+ * only when the value actually changes.
+ *
+ * @param {{ key: string, label: string, min: number, max: number, step: number,
+ *           prefix?: string, suffix?: string, control?: string }} field
+ * @param {number} currentValue
+ * @param {(value: number) => void} onChange
+ * @returns {HTMLDivElement}
+ */
 function createNumberField(field, currentValue, onChange) {
   const row = document.createElement("div");
   row.className = "field";
@@ -793,6 +900,12 @@ function createNumberField(field, currentValue, onChange) {
   return row;
 }
 
+/**
+ * Build a labelled <select> field row.
+ * @param {{ label: string, options: Array<{value: unknown, label: string}>,
+ *           value: unknown, onChange: (value: string) => void }} params
+ * @returns {HTMLDivElement}
+ */
 function createSelectField({ label, options, value, onChange }) {
   const row = document.createElement("div");
   row.className = "field";
@@ -821,6 +934,17 @@ function createSelectField({ label, options, value, onChange }) {
   return row;
 }
 
+/**
+ * Render a list of fields grouped into collapsible category sections.
+ * Each category section has a toggle button; its content is shown/hidden via
+ * `hidden` based on whether the category key is in `openCategories`.
+ *
+ * @param {HTMLElement} node - Container to render into (cleared on each call).
+ * @param {Array} fields - Field definitions from calculators.mjs.
+ * @param {Record<string, number>} state - Current input values.
+ * @param {(key: string, value: number) => void} onUpdate
+ * @param {{ openCategories?: Set<string>, onToggleCategory?: (cat: string) => void }} [options]
+ */
 function renderGroupedFields(
   node,
   fields,
@@ -877,6 +1001,15 @@ function renderGroupedFields(
   });
 }
 
+// ─── Output rendering ────────────────────────────────────────────────────────
+
+/**
+ * Build a single metric card for the hero summary area.
+ * @param {string} label
+ * @param {string} value
+ * @param {{ primary?: boolean, overline?: string|null, unit?: string|null }} [options]
+ * @returns {HTMLElement}
+ */
 function createSummaryMetricCard(
   label,
   value,
@@ -1136,6 +1269,13 @@ function renderMeatOutputSummary(node, state, result) {
   );
 }
 
+// ─── Page initialisers ───────────────────────────────────────────────────────
+
+/**
+ * Wire up the egg price calculator page.
+ * Expects DOM elements: #fields, #summary, #breakdown, #reset-defaults.
+ * Manages accordion category state and breakdown toggle state locally.
+ */
 function initEggPage() {
   const fieldsNode = document.getElementById("fields");
   const summaryNode = document.getElementById("summary");
@@ -1216,6 +1356,11 @@ function initEggPage() {
   updateOutputs();
 }
 
+/**
+ * Wire up the meat chicken price calculator page.
+ * Expects DOM elements: #fields, #summary, #breakdown, #reset-defaults.
+ * Renders two breakdown subsections (Sent Out / DIY) inside #breakdown.
+ */
 function initMeatPage() {
   const fieldsNode = document.getElementById("fields");
   const summaryNode = document.getElementById("summary");
@@ -1333,6 +1478,11 @@ function initMeatPage() {
   updateOutputs();
 }
 
+/**
+ * Deep-clone STOCK_MIXED_DEFAULTS so each page init gets its own mutable copy
+ * of the nested animals object.
+ * @returns {typeof STOCK_MIXED_DEFAULTS}
+ */
 function cloneMixedDefaults() {
   return {
     ...STOCK_MIXED_DEFAULTS,
@@ -1340,6 +1490,12 @@ function cloneMixedDefaults() {
   };
 }
 
+/**
+ * Wire up the stock density calculator page.
+ * Expects DOM elements: #stock-mode, #fields, #summary, #breakdown, #reset-defaults.
+ * Manages single/mixed mode state locally; #breakdown is permanently hidden
+ * (stocking results use summary panels only, no donut chart).
+ */
 function initStockPage() {
   const modeNode = document.getElementById("stock-mode");
   const fieldsNode = document.getElementById("fields");
@@ -1796,6 +1952,14 @@ function initStockPage() {
   renderOutputs();
 }
 
+// ─── Feedback modal ───────────────────────────────────────────────────────────
+
+/**
+ * Inject a floating Feedback button and modal that submits free-text
+ * responses to PostHog as a survey event.
+ *
+ * Falls back gracefully if PostHog is not loaded (the submit just no-ops).
+ */
 function initFeedbackButton() {
   const SURVEY_ID = "019c0dbb-3fb4-0000-cef7-25d59f3b5928";
 
@@ -1880,6 +2044,10 @@ function initFeedbackButton() {
     setTimeout(closeModal, 1800);
   });
 }
+
+// ─── Entry point ──────────────────────────────────────────────────────────────
+// Dispatch to the correct page init based on the data-calculator attribute
+// set on <body> in each HTML entrypoint.
 
 initLanguageControls();
 

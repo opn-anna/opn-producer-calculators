@@ -3,7 +3,6 @@
 This repository contains source-controlled static pages for three producer calculators:
 
 - Egg price calculator: `/` and `/egg-price/`
-- Egg price calculator: `/egg-price/`
 - Meat chicken price calculator: `/meat-price/`
 - Stock density calculator: `/stock-density/`
 
@@ -14,9 +13,12 @@ This repository contains source-controlled static pages for three producer calcu
 - `meat-price/index.html`, `stock-density/index.html`: per-calculator entrypoints
 - `src/app.mjs`: shared UI wiring, form rendering, and output rendering
 - `src/calculators.mjs`: calculator defaults, input schema, and formula functions
+- `app.css`: shared stylesheet
 - `scripts/verify-parity.mjs`: parity check against baseline outputs
 - `spec/baseline-outputs.json`: expected outputs for default inputs
 - `assets/`: original bundled artifacts kept for reference only
+- `archive/`: prior React/TypeScript implementation kept for formula reference
+- `404.html`, `robots.txt`: static site support files
 
 ## Run locally
 
@@ -53,13 +55,12 @@ Create a virtual environment and install pre-commit:
 
 ```sh
 python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install pre-commit
-pre-commit install
+.venv/bin/pip install pre-commit
+.venv/bin/pre-commit install
 ```
 
 Run all hooks manually:
 
 ```sh
-pre-commit run --all-files
+.venv/bin/pre-commit run --all-files
 ```
