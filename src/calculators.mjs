@@ -843,9 +843,8 @@ export function computeMeatPricing(input) {
   const k = (e.broodingHoursPerDay * e.broodingDays * e.laborRate) / d; // brooding labor per bird
   const A = C + k; // total brooding cost per bird
 
-  // Feed cost per bird, scaled by the ratio of chicksCount to birdsFinished
-  const feedPerBirdAnnual = e.annualFeedCost / g; // annual feed cost per finished bird
-  const feed = (feedPerBirdAnnual * d) / g; // feed cost per starting chick, normalized to batch size
+  // Feed cost per bird: total annual feed cost divided by annual birds finished.
+  const feed = e.annualFeedCost / g;
 
   // Infrastructure: chicken tractor depreciation + annual repairs, spread across birds per tractor per year
   const D = e.tractorMaterialsCost / w + e.annualRepairCost; // annual tractor cost

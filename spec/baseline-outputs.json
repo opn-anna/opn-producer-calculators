@@ -17,16 +17,16 @@
     }
   },
   "meat": {
-    "pricePerPoundSentOut": 7.040994683635746,
-    "pricePerPoundDIY": 5.283957646598709,
-    "costPerPoundSentOut": 3.520497341817873,
-    "costPerPoundDIY": 2.6419788232993544,
-    "totalCostPerBirdSentOut": 15.842238038180428,
-    "totalCostPerBirdDIY": 11.888904704847095,
+    "pricePerPoundSentOut": 8.585025200639237,
+    "pricePerPoundDIY": 6.8279881636022,
+    "costPerPoundSentOut": 4.292512600319618,
+    "costPerPoundDIY": 3.4139940818011,
+    "totalCostPerBirdSentOut": 19.316306701438283,
+    "totalCostPerBirdDIY": 15.36297336810495,
     "costBreakdown": {
       "chickPurchase": 3.105263157894737,
       "brooding": 0.81,
-      "feed": 0.95836376917458,
+      "feed": 4.4324324324324325,
       "infrastructure": 0.3402777777777778,
       "fieldLabor": 2.625,
       "processingSentOut": 7.263333333333334,
