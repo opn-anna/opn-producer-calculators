@@ -19,7 +19,7 @@ repos:
     hooks:
       - id: verify-calculator-parity
         name: verify calculator parity baseline
-        entry: node scripts/verify-parity.mjs
+        entry: node --test scripts/test.mjs
         language: system
         pass_filenames: false
-        files: ^(src/.*\.mjs|scripts/verify-parity\.mjs|spec/baseline-outputs\.json)$
+        files: ^(src/.*\.mjs|scripts/test\.mjs|spec/baseline-outputs\.json)$

@@ -14,7 +14,8 @@ This repository contains source-controlled static pages for three producer calcu
 - `src/app.mjs`: shared UI wiring, form rendering, and output rendering
 - `src/calculators.mjs`: calculator defaults, input schema, and formula functions
 - `app.css`: shared stylesheet
-- `scripts/verify-parity.mjs`: parity check against baseline outputs
+- `scripts/test.mjs`: test suite (parity, off-default, property, and zero-guard tests)
+- `scripts/generate-baseline.mjs`: regenerates `spec/baseline-outputs.json` from current defaults
 - `spec/baseline-outputs.json`: expected outputs for default inputs
 - `assets/`: original bundled artifacts kept for reference only
 - `archive/`: prior React/TypeScript implementation kept for formula reference
@@ -39,14 +40,21 @@ Then open:
 
 1. Update formulas, defaults, or field definitions in `src/calculators.mjs`.
 2. Update labels and rendering logic in `src/app.mjs` and any affected page entrypoint.
-3. Run parity verification.
-4. If formula output changes are intentional, update `spec/baseline-outputs.json` in the same commit and rerun parity.
+3. Run the test suite.
+4. If formula output changes are intentional, regenerate the baseline and rerun tests.
 5. Run pre-commit checks before committing.
 
-## Verification commands
+## Running tests
 
 ```sh
-node scripts/verify-parity.mjs
+node --test scripts/test.mjs
+```
+
+If default outputs change intentionally, regenerate the baseline first:
+
+```sh
+node scripts/generate-baseline.mjs
+node --test scripts/test.mjs
 ```
 
 ## Pre-commit setup
