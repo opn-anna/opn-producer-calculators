@@ -1,0 +1,2063 @@
+/**
+ * app.mjs — shared UI wiring for all three calculator pages.
+ *
+ * Each HTML page sets `data-calculator` on <body> to "egg", "meat", or
+ * "stock". The entry-point dispatch at the bottom of this file calls the
+ * corresponding init function. All three share the language system, field
+ * factories, and output-rendering helpers defined here.
+ */
+import {
+  EGG_FIELDS,
+  MEAT_FIELDS,
+  EGG_DEFAULTS,
+  MEAT_DEFAULTS,
+  FORAGE_DENSITY_LEVELS,
+  ANIMAL_CLASSES,
+  STOCK_SINGLE_DEFAULTS,
+  STOCK_MIXED_DEFAULTS,
+  STOCK_FIELD_CONTROLS,
+  computeEggPricing,
+  computeMeatPricing,
+  computeStockSingle,
+  computeStockMixed,
+} from "/src/calculators.mjs";
+
+// ─── Analytics ──────────────────────────────────────────────────────────────
+
+/**
+ * Safe PostHog capture — no-ops when PostHog is not loaded.
+ * @param {string} event
+ * @param {Record<string, unknown>} [props]
+ */
+function phCapture(event, props) {
+  window.posthog?.capture(event, props);
+}
+
+// ─── UI Constants ────────────────────────────────────────────────────────────
+
+const CATEGORY_TITLES = {
+  labor: "Labor & General",
+  chicks: "Chicks",
+  brooding: "Brooding",
+  laying: "Laying Flock",
+  infrastructure: "Infrastructure",
+  distribution: "Distribution",
+  culling: "Culling",
+  chickPurchase: "Chick Purchase",
+  feed: "Feed",
+  fieldLabor: "Field Labor",
+  processingSentOut: "Processing - Sent Out",
+  processingDIY: "Processing - DIY",
+  other: "Other Factors",
+};
+const EGG_VISIBLE_FIELDS = EGG_FIELDS.filter(
+  (field) => field.category !== "chicks",
+);
+
+const BREAKDOWN_COLORS = {
+  brooding: "#9a59c7",
+  infrastructure: "#eb7e34",
+  distribution: "#23a2c9",
+  cartons: "#b88437",
+  feed: "#3e7f6b",
+  labor: "#f0b728",
+  feedPickup: "#8db89f",
+  stewHenCredit: "#bfd0c7",
+  chickPurchase: "#9a59c7",
+  fieldLabor: "#f0b728",
+  processingSentOut: "#3e7f6b",
+  processingDIY: "#23a2c9",
+};
+
+const BREAKDOWN_FALLBACK_COLORS = [
+  "#1d4ed8",
+  "#9333ea",
+  "#0891b2",
+  "#059669",
+  "#ca8a04",
+  "#dc2626",
+  "#ea580c",
+  "#7c3aed",
+];
+
+const BREAKDOWN_CREDIT_KEYS = new Set(["stewHenCredit"]);
+
+// ─── Internationalisation (i18n) ─────────────────────────────────────────────
+// STATIC_TRANSLATIONS: keyed strings rendered via data-i18n / data-i18n-content
+// attributes in HTML (page titles, nav labels, meta descriptions).
+// PHRASE_TRANSLATIONS_ES: dynamic phrases translated at runtime inside JS
+// (field labels, output metric names, category headings).
+
+const LANGUAGE_STORAGE_KEY = "opn-calculator-language";
+const SUPPORTED_LANGUAGES = new Set(["en", "es"]);
+
+const STATIC_TRANSLATIONS = {
+  en: {
+    "meta.home.title": "Pasture Producer Calculators | Oregon Pasture Network",
+    "meta.home.description":
+      "Pasture Producer Calculators: egg price, meat price, and stock density. Tools by Oregon Pasture Network to support pasture-based producers with pricing decisions.",
+    "page.home.title": "Egg Price Calculator",
+    "page.home.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
+    "nav.home": "Home",
+    "nav.egg": "Egg Price",
+    "nav.meat": "Meat Price",
+    "nav.stock": "Stock Density",
+    "footer.issue": "File an Issue",
+    "footer.source": "Source Code",
+    "footer.support": "Support Oregon Pasture Network",
+    "language.label": "Language",
+    "home.calculators.heading": "Calculators",
+    "home.calculators.egg": "Egg Price Calculator",
+    "home.calculators.meat": "Meat Chicken Price Calculator",
+    "home.calculators.stock": "Stock Density Calculator",
+    "meta.egg.title": "Egg Price Calculator",
+    "meta.egg.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
+    "page.egg.title": "Egg Price Calculator",
+    "page.egg.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised eggs",
+    "common.inputs": "Inputs",
+    "common.reset": "Reset to Defaults",
+    "common.outputs": "Outputs",
+    "egg.breakdown.heading": "Cost Breakdown (per dozen)",
+    "meta.meat.title": "Meat Chicken Price Calculator",
+    "meta.meat.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised meat chickens",
+    "page.meat.title": "Meat Chicken Price Calculator",
+    "page.meat.description":
+      "Calculate the true cost of production to ensure sustainable pricing for your pasture-raised meat chickens",
+    "meat.breakdown.heading": "Cost Breakdown (per bird)",
+    "meta.stock.title": "Stock Density Calculator",
+    "meta.stock.description":
+      "Calculate optimal stocking density for your pasture management. Measure forage height, enter your herd details, and get paddock sizing recommendations.",
+    "page.stock.title": "Stock Density Calculator",
+    "page.stock.description":
+      "Calculate optimal stocking density for your pasture management. Measure forage height, enter your herd details, and get paddock sizing recommendations.",
+    "stock.breakdown.heading": "Animal Breakdown",
+  },
+  es: {
+    "meta.home.title":
+      "Calculadoras para productores de pastoreo | Oregon Pasture Network",
+    "meta.home.description":
+      "Calculadoras para productores de pastoreo: precio de huevos, precio de carne y carga animal. Herramientas de Oregon Pasture Network para apoyar decisiones de precios en sistemas de pastoreo.",
+    "page.home.title": "Calculadora de precio de huevos",
+    "page.home.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
+    "nav.home": "Inicio",
+    "nav.egg": "Precio de huevos",
+    "nav.meat": "Precio de carne",
+    "nav.stock": "Carga animal",
+    "footer.issue": "Reportar un problema",
+    "footer.source": "Código fuente",
+    "footer.support": "Apoyar a Oregon Pasture Network",
+    "language.label": "Idioma",
+    "home.calculators.heading": "Calculadoras",
+    "home.calculators.egg": "Calculadora de precio de huevos",
+    "home.calculators.meat": "Calculadora de precio de pollo de engorde",
+    "home.calculators.stock": "Calculadora de carga animal",
+    "meta.egg.title": "Calculadora de precio de huevos",
+    "meta.egg.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
+    "page.egg.title": "Calculadora de precio de huevos",
+    "page.egg.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus huevos de pastoreo",
+    "common.inputs": "Entradas",
+    "common.reset": "Restablecer valores predeterminados",
+    "common.outputs": "Resultados",
+    "egg.breakdown.heading": "Desglose de costos (por docena)",
+    "meta.meat.title": "Calculadora de precio de pollo de engorde",
+    "meta.meat.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus pollos de engorde en pastoreo",
+    "page.meat.title": "Calculadora de precio de pollo de engorde",
+    "page.meat.description":
+      "Calcula el costo real de producción para asegurar un precio sostenible de tus pollos de engorde en pastoreo",
+    "meat.breakdown.heading": "Desglose de costos (por ave)",
+    "meta.stock.title": "Calculadora de carga animal",
+    "meta.stock.description":
+      "Calcula la carga animal óptima para el manejo de tus pasturas. Mide la altura del forraje, ingresa los datos de tu rodeo y obtén recomendaciones de tamaño de potrero.",
+    "page.stock.title": "Calculadora de carga animal",
+    "page.stock.description":
+      "Calcula la carga animal óptima para el manejo de tus pasturas. Mide la altura del forraje, ingresa los datos de tu rodeo y obtén recomendaciones de tamaño de potrero.",
+    "stock.breakdown.heading": "Desglose por animal",
+  },
+};
+
+const PHRASE_TRANSLATIONS_ES = {
+  "Labor & General": "Mano de obra y general",
+  Chicks: "Pollitos",
+  Brooding: "Crianza",
+  Laying: "Postura",
+  "Laying Flock": "Lote de postura",
+  Infrastructure: "Infraestructura",
+  Distribution: "Distribución",
+  Culling: "Descarte",
+  "Chick Purchase": "Compra de pollitos",
+  Feed: "Alimento",
+  "Field Labor": "Trabajo en campo",
+  "Processing - Sent Out": "Procesamiento - externo",
+  "Processing - DIY": "Procesamiento - propio",
+  "Other Factors": "Otros factores",
+  "Processing (Sent Out)": "Procesamiento (externo)",
+  "Processing (DIY)": "Procesamiento (propio)",
+  Other: "Otros",
+  "Labor Rate": "Tarifa de mano de obra",
+  "Desired Gross Margin": "Margen bruto deseado",
+  "Chicks Purchased": "Pollitos comprados",
+  "Total Cost of Chicks": "Costo total de pollitos",
+  "Chick Mortality Rate": "Tasa de mortalidad de pollitos",
+  "Brooding Hours per Day": "Horas de crianza por día",
+  "Total Brooding Days": "Días totales de crianza",
+  "Starter Feed Cost": "Costo del alimento iniciador",
+  "Starter Feed Unit Size": "Tamaño de unidad del alimento iniciador",
+  "Size of Flock": "Tamaño del lote",
+  "Feed per Bird per Day": "Alimento por ave por día",
+  "Feed Price per Unit": "Precio del alimento por unidad",
+  "Feed Unit Size": "Tamaño de unidad del alimento",
+  "Expected Lay Rate (Year 1)": "Tasa de postura esperada (año 1)",
+  "Years to Keep Hens": "Años para mantener gallinas",
+  "Laying Labor Hours per Day": "Horas de trabajo de postura por día",
+  "Building Materials Cost": "Costo de materiales de construcción",
+  "Annual Repairs": "Reparaciones anuales",
+  "Infrastructure Lifespan": "Vida útil de infraestructura",
+  "Miles per Delivery": "Millas por entrega",
+  "Deliveries per Year": "Entregas por año",
+  "Cost per Mile": "Costo por milla",
+  "Labor Hours per Delivery": "Horas de mano de obra por entrega",
+  "Egg Carton Cost": "Costo del cartón de huevos",
+  "Feed Pickup Hours per Trip": "Horas de recogida de alimento por viaje",
+  "Feed Pickup Trips per Year": "Viajes de recogida de alimento por año",
+  "Feed Pickup Mileage": "Millaje de recogida de alimento",
+  "Net Value per Stew Hen": "Valor neto por gallina de descarte",
+  "Total Cost of Chicks (incl. Shipping)":
+    "Costo total de pollitos (incluye envío)",
+  "Bedding Cost per Unit": "Costo de cama por unidad",
+  "Bedding Units per Batch": "Unidades de cama por lote",
+  "Annual Feed Cost": "Costo anual de alimento",
+  "Birds Finished Annually": "Aves terminadas al año",
+  "Feed Pickup Travel Time": "Tiempo de traslado para recoger alimento",
+  "Feed Pickup Trips per Batch": "Viajes de recogida de alimento por lote",
+  "Feed Pickup Round Trip Miles": "Millas ida y vuelta para recoger alimento",
+  "IRS Mileage Rate": "Tarifa de millaje del IRS",
+  "Chicken Tractor Materials Cost": "Costo de materiales del tractor de pollos",
+  "Annual Repair Cost": "Costo anual de reparación",
+  "Tractor Lifespan": "Vida útil del tractor",
+  "Birds per Tractor per Batch": "Aves por tractor por lote",
+  "Batches per Year per Tractor": "Lotes por año por tractor",
+  "Days in Field per Batch": "Días en campo por lote",
+  "Field Labor Hours per Day": "Horas de trabajo en campo por día",
+  "Processing Total Cost": "Costo total de procesamiento",
+  "Birds Processed": "Aves procesadas",
+  "Processor Travel Time": "Tiempo de traslado al procesador",
+  "Processor Round Trip Mileage": "Millaje ida y vuelta al procesador",
+  "Equipment Cost": "Costo del equipo",
+  "Equipment Lifespan": "Vida útil del equipo",
+  "Birds Processed per Year": "Aves procesadas por año",
+  "Processing Crew Size": "Tamaño del equipo de procesamiento",
+  "Hours per Person on Processing Day":
+    "Horas por persona el día de procesamiento",
+  "Birds Processed per Day": "Aves procesadas por día",
+  "Packaging Cost per Bag": "Costo de empaque por bolsa",
+  "Label Cost Each": "Costo por etiqueta",
+  "Propane Cost per Batch": "Costo de propano por lote",
+  "Average Dressed Weight": "Peso canal promedio",
+  "Recommended Price / Dozen": "Precio recomendado / docena",
+  "Cost / Dozen": "Costo / docena",
+  "Profit / Dozen": "Ganancia / docena",
+  "Average Dozen / Hen / Year": "Docenas promedio / gallina / año",
+  "Total Eggs / Hen": "Huevos totales / gallina",
+  "Annual Revenue / Hen": "Ingreso anual / gallina",
+  "Recommended Price": "Precio recomendado",
+  "Per Dozen": "Por docena",
+  "Cost per Dozen": "Costo por docena",
+  "Gross Margin per Dozen": "Margen bruto por docena",
+  "Dozen/Hen/Year": "Docenas/gallina/año",
+  "Average Dozen per Hen per Year": "Docenas promedio por gallina por año",
+  "Total Eggs per Hen (2 years)": "Huevos totales por gallina (2 años)",
+  "Annual Revenue per Hen": "Ingreso anual por gallina",
+  "Recommended Price / lb (Sent Out)": "Precio recomendado / libra (externo)",
+  "Recommended Price / lb (DIY)": "Precio recomendado / libra (propio)",
+  "Cost / lb (Sent Out)": "Costo / libra (externo)",
+  "Cost / lb (DIY)": "Costo / libra (propio)",
+  "Total Cost / Bird (Sent Out)": "Costo total / ave (externo)",
+  "Total Cost / Bird (DIY)": "Costo total / ave (propio)",
+  "Recommended Price per Pound": "Precio recomendado por libra",
+  "Sent Out Processing": "Procesamiento externo",
+  "DIY Processing": "Procesamiento propio",
+  "per pound": "por libra",
+  "Sent Out": "Externo",
+  "Cost per Bird": "Costo por ave",
+  "Cost per Pound": "Costo por libra",
+  "Gross Margin per Pound": "Margen bruto por libra",
+  DIY: "Propio",
+  "Gross Margin": "Margen bruto",
+  "Avg. Weight": "Peso prom.",
+  "Birds Finished (Annual)": "Aves terminadas (anual)",
+  "Avg. Dressed Weight": "Peso canal prom.",
+  "Forage (lbs/acre)": "Forraje (libras/acre)",
+  "Total Animal Weight (lbs)": "Peso animal total (libras)",
+  "Dry Matter %": "% de materia seca",
+  "Dry Matter Needed / Day": "Materia seca necesaria / día",
+  "Dry Matter Available": "Materia seca disponible",
+  "Acres Needed / Day": "Acres necesarios / día",
+  "Square Feet": "Pies cuadrados",
+  "Paddock Width": "Ancho del potrero",
+  "Stocking Density / Acre": "Carga animal / acre",
+  "Paddock Size with Moves": "Tamaño de potrero con movimientos",
+  "Stocking Density with Moves": "Carga animal con movimientos",
+  "Total Cost": "Costo total",
+  "Weighted Dry Matter %": "% de materia seca ponderado",
+  "Total Dry Matter Needed / Day": "Materia seca total necesaria / día",
+  Component: "Componente",
+  Amount: "Monto",
+  Class: "Clase",
+  Head: "Cabezas",
+  "Avg Weight": "Peso prom.",
+  "Total Weight": "Peso total",
+  "Dry Matter Needed": "Materia seca necesaria",
+  Labor: "Mano de obra",
+  "Feed Pickup": "Recogida de alimento",
+  Cartons: "Cartones",
+  "Stew Hen Credit": "Crédito por gallina de descarte",
+  "Processing Sent Out": "Procesamiento externo",
+  "Processing DIY": "Procesamiento propio",
+  "Single Class": "Clase única",
+  "Mixed Herd": "Rodeo mixto",
+  "Animal Groups": "Grupos de animales",
+  "Average Forage Height": "Altura promedio del forraje",
+  "Ground Coverage Density": "Densidad de cobertura del suelo",
+  "Forage Utilization Goal": "Objetivo de utilización del forraje",
+  "Paddock Side Length": "Largo del lado del potrero",
+  "Paddock Moves per Day": "Movimientos de potrero por día",
+  "Number of Head": "Número de cabezas",
+  "Average Weight": "Peso promedio",
+  "Animal Class": "Clase animal",
+  "85-90% coverage": "85-90% cobertura",
+  "90-95% coverage": "90-95% cobertura",
+  "95%+ coverage": "95%+ cobertura",
+  "Stocker Cattle": "Novillos de engorde",
+  "Dry Cow": "Vaca seca",
+  "Lactating Cow": "Vaca lactante",
+  "Sheep/Goats": "Ovejas/Cabras",
+  "Lactating Sheep": "Oveja lactante",
+  "/hr": "/h",
+  hrs: "h",
+  days: "días",
+  years: "años",
+  yrs: "años",
+  each: "cada uno",
+  "Show Cost Breakdown": "Mostrar desglose de costos",
+  "Hide Cost Breakdown": "Ocultar desglose de costos",
+  Reset: "Restablecer",
+  "Daily Paddock Size": "Tamaño diario del potrero",
+  acres: "ac",
+  "sq ft": "pies²",
+  "Forage Available": "Forraje disponible",
+  "Forage Analysis": "Análisis de forraje",
+  "lbs/acre": "libras/acre",
+  "Herd Requirements": "Requerimientos del rodeo",
+  "Daily Dry Matter Need": "Necesidad diaria de materia seca",
+  lbs: "libras",
+  "Stocking Density": "Carga animal",
+  "Paddock Dimensions": "Dimensiones del potrero",
+  "ft (set)": "ft (definido)",
+  "ft (calculated)": "ft (calculado)",
+  "Production Summary": "Resumen de producción",
+  "Total Meat (Annual)": "Carne total (anual)",
+  "Single class mode does not include an animal breakdown table.":
+    "El modo de clase única no incluye una tabla de desglose por animal.",
+  "Cost Breakdown": "Desglose de costos",
+};
+
+// ─── Language state ──────────────────────────────────────────────────────────
+// currentLanguage is module-level state; setLanguage() is the only write path.
+// Listeners registered via onLanguageChange() are called after each change.
+// fieldIdCounter generates unique DOM ids for label/input pairs.
+
+let currentLanguage = readStoredLanguage();
+const languageChangeListeners = new Set();
+let fieldIdCounter = 0;
+
+/**
+ * Normalise a language tag to a supported value, defaulting to "en".
+ * @param {unknown} language
+ * @returns {"en" | "es"}
+ */
+function normalizeLanguage(language) {
+  const candidate = String(language ?? "")
+    .trim()
+    .toLowerCase();
+  return SUPPORTED_LANGUAGES.has(candidate) ? candidate : "en";
+}
+
+function readStoredLanguage() {
+  try {
+    return normalizeLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY));
+  } catch (error) {
+    return "en";
+  }
+}
+
+function persistLanguage(language) {
+  try {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  } catch (error) {
+    // Ignore storage failures in private or restricted contexts.
+  }
+}
+
+/**
+ * Look up a STATIC_TRANSLATIONS key for the current language, falling back
+ * to English then to the provided fallback string.
+ * @param {string} key
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+function translateStatic(key, fallback = "") {
+  const localized = STATIC_TRANSLATIONS[currentLanguage]?.[key];
+  if (localized) {
+    return localized;
+  }
+  const english = STATIC_TRANSLATIONS.en[key];
+  return english ?? fallback;
+}
+
+/**
+ * Translate a dynamic phrase via PHRASE_TRANSLATIONS_ES.
+ * Returns the phrase unchanged when the current language is English or the
+ * phrase has no Spanish mapping.
+ * @param {string} phrase
+ * @returns {string}
+ */
+function translatePhrase(phrase) {
+  if (currentLanguage === "es") {
+    return PHRASE_TRANSLATIONS_ES[phrase] ?? phrase;
+  }
+  return phrase;
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = currentLanguage;
+
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    const key = node.getAttribute("data-i18n");
+    if (!key) {
+      return;
+    }
+    node.textContent = translateStatic(key, node.textContent ?? "");
+  });
+
+  document.querySelectorAll("[data-i18n-content]").forEach((node) => {
+    const key = node.getAttribute("data-i18n-content");
+    if (!key) {
+      return;
+    }
+    const fallback = node.getAttribute("content") ?? "";
+    node.setAttribute("content", translateStatic(key, fallback));
+  });
+}
+
+function updateLanguageButtons() {
+  document.querySelectorAll("[data-language-option]").forEach((button) => {
+    const option = normalizeLanguage(
+      button.getAttribute("data-language-option"),
+    );
+    const isActive = option === currentLanguage;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+/**
+ * Set the active language, optionally persisting to localStorage and
+ * notifying registered change listeners.
+ * @param {string} language
+ * @param {{ persist?: boolean, notify?: boolean }} [options]
+ */
+function setLanguage(language, { persist = true, notify = true } = {}) {
+  currentLanguage = normalizeLanguage(language);
+  if (persist) {
+    persistLanguage(currentLanguage);
+  }
+  applyStaticTranslations();
+  updateLanguageButtons();
+  if (notify) {
+    languageChangeListeners.forEach((listener) => listener(currentLanguage));
+  }
+}
+
+/**
+ * Register a listener that fires after each language change.
+ * Returns an unsubscribe function.
+ * @param {(language: string) => void} listener
+ * @returns {() => void}
+ */
+function onLanguageChange(listener) {
+  languageChangeListeners.add(listener);
+  return () => languageChangeListeners.delete(listener);
+}
+
+function initLanguageControls() {
+  document.querySelectorAll("[data-language-option]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selectedLanguage = button.getAttribute("data-language-option");
+      setLanguage(selectedLanguage, { persist: true, notify: true });
+    });
+  });
+  setLanguage(currentLanguage, { persist: false, notify: false });
+}
+
+// ─── Format helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Generate a unique, stable DOM id from a field key.
+ * @param {string} key
+ * @returns {string}
+ */
+function createFieldId(key) {
+  const normalized = String(key)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  fieldIdCounter += 1;
+  return `${normalized || "field"}-${fieldIdCounter}`;
+}
+
+/**
+ * Convert a camelCase or snake_case key to a human-readable Title Case label.
+ * @param {string} value
+ * @returns {string}
+ */
+function humanizeKey(value) {
+  return String(value)
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatNumber(value, digits = 2) {
+  return Number.isFinite(value) ? value.toFixed(digits) : "0.00";
+}
+
+function formatGroupedNumber(value, digits = 0) {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+  return new Intl.NumberFormat(currentLanguage === "es" ? "es-ES" : "en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+function formatMoney(value) {
+  return `$${formatNumber(value, 2)}`;
+}
+
+function formatSignedMoney(value) {
+  const absoluteValue = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${formatNumber(absoluteValue, 2)}`;
+}
+
+function formatPercent(value) {
+  return `${formatNumber(value * 100, 2)}%`;
+}
+
+function countStepDecimals(step) {
+  const stepText = String(step ?? "");
+  if (!stepText.includes(".")) {
+    return 0;
+  }
+  return stepText.split(".")[1].length;
+}
+
+function normalizeFieldValue(field, rawValue, fallbackValue = 0) {
+  const parsedValue = Number.parseFloat(String(rawValue));
+  let nextValue = Number.isFinite(parsedValue) ? parsedValue : fallbackValue;
+  const minimum = Number(field.min);
+  const maximum = Number(field.max);
+  const step = Number(field.step);
+
+  if (Number.isFinite(minimum)) {
+    nextValue = Math.max(minimum, nextValue);
+  }
+
+  if (Number.isFinite(maximum)) {
+    nextValue = Math.min(maximum, nextValue);
+  }
+
+  if (Number.isFinite(step) && step > 0) {
+    const origin = Number.isFinite(minimum) ? minimum : 0;
+    const stepCount = Math.round((nextValue - origin) / step);
+    const steppedValue = origin + stepCount * step;
+    nextValue = Number(steppedValue.toFixed(countStepDecimals(step)));
+  }
+
+  return nextValue;
+}
+
+/**
+ * Return the control mode for a field: "slider+number" or "number".
+ * @param {{ control?: string }} field
+ * @returns {"slider+number" | "number"}
+ */
+function getFieldControlMode(field) {
+  return field.control === "slider+number" ? "slider+number" : "number";
+}
+
+// ─── DOM helpers ──────────────────────────────────────────────────────────────
+
+/** Remove all children from a DOM node. */
+function clearNode(node) {
+  node.innerHTML = "";
+}
+
+/**
+ * Create an SVG element in the SVG namespace.
+ * @param {string} tagName
+ * @returns {SVGElement}
+ */
+function createSvgNode(tagName) {
+  return document.createElementNS("http://www.w3.org/2000/svg", tagName);
+}
+
+// ─── Cost breakdown chart ────────────────────────────────────────────────────
+// renderCostBreakdownChart builds a donut SVG + legend for a cost breakdown
+// object. Positive entries appear as arc slices; negative entries (credits)
+// are listed separately below the legend.
+
+/**
+ * Resolve a fill color for a breakdown cost component.
+ * Falls back to a rotation through BREAKDOWN_FALLBACK_COLORS.
+ * @param {string} key
+ * @param {number} index
+ * @returns {string}
+ */
+function resolveBreakdownColor(key, index) {
+  return (
+    BREAKDOWN_COLORS[key] ??
+    BREAKDOWN_FALLBACK_COLORS[index % BREAKDOWN_FALLBACK_COLORS.length]
+  );
+}
+
+function buildBreakdownEntries(costBreakdown) {
+  return Object.entries(costBreakdown)
+    .map(([key, value], index) => {
+      const numericValue = Number(value);
+      const amount = Number.isFinite(numericValue) ? numericValue : 0;
+      const isCredit = BREAKDOWN_CREDIT_KEYS.has(key) || amount < 0;
+      const signedAmount = isCredit ? -Math.abs(amount) : amount;
+      return {
+        key,
+        label: translatePhrase(humanizeKey(key)),
+        signedAmount,
+        magnitude: Math.abs(signedAmount),
+        isCredit,
+        color: resolveBreakdownColor(key, index),
+      };
+    })
+    .filter((entry) => entry.magnitude > 0);
+}
+
+function createBreakdownLegendItem(entry, { signed = false } = {}) {
+  const row = document.createElement("div");
+  row.className = "cost-legend-item";
+
+  const labelWrap = document.createElement("div");
+  labelWrap.className = "cost-legend-label-wrap";
+
+  const dot = document.createElement("span");
+  dot.className = "cost-legend-dot";
+  dot.style.backgroundColor = entry.color;
+  labelWrap.append(dot);
+
+  const label = document.createElement("span");
+  label.className = "cost-legend-label";
+  label.textContent = entry.label;
+  labelWrap.append(label);
+
+  const amount = document.createElement("span");
+  amount.className = "cost-legend-value";
+  amount.textContent = signed
+    ? formatSignedMoney(entry.signedAmount)
+    : formatMoney(entry.signedAmount);
+
+  row.append(labelWrap, amount);
+  return row;
+}
+
+function renderCostBreakdownChart(node, { costBreakdown, totalCost }) {
+  clearNode(node);
+
+  const entries = buildBreakdownEntries(costBreakdown);
+  if (!entries.length) {
+    return;
+  }
+
+  const positiveEntries = entries.filter((entry) => !entry.isCredit);
+  const creditEntries = entries.filter((entry) => entry.isCredit);
+
+  const wrapper = document.createElement("section");
+  wrapper.className = "cost-breakdown-chart";
+
+  const donut = document.createElement("div");
+  donut.className = "cost-donut";
+
+  const svg = createSvgNode("svg");
+  svg.setAttribute("viewBox", "0 0 220 220");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", formatSignedMoney(totalCost));
+
+  const track = createSvgNode("circle");
+  track.classList.add("cost-donut-track");
+  track.setAttribute("cx", "110");
+  track.setAttribute("cy", "110");
+  track.setAttribute("r", "78");
+  svg.append(track);
+
+  const radius = 78;
+  const circumference = 2 * Math.PI * radius;
+  const positiveTotal = positiveEntries.reduce(
+    (sum, entry) => sum + entry.magnitude,
+    0,
+  );
+
+  let dashOffset = 0;
+  positiveEntries.forEach((entry) => {
+    if (positiveTotal <= 0) {
+      return;
+    }
+    const ratio = entry.magnitude / positiveTotal;
+    const dashLength = ratio * circumference;
+    const slice = createSvgNode("circle");
+    slice.classList.add("cost-donut-slice");
+    slice.setAttribute("cx", "110");
+    slice.setAttribute("cy", "110");
+    slice.setAttribute("r", String(radius));
+    slice.setAttribute("stroke", entry.color);
+    slice.setAttribute(
+      "stroke-dasharray",
+      `${dashLength} ${circumference - dashLength}`,
+    );
+    slice.setAttribute("stroke-dashoffset", String(-dashOffset));
+    svg.append(slice);
+    dashOffset += dashLength;
+  });
+
+  donut.append(svg);
+
+  const center = document.createElement("div");
+  center.className = "cost-donut-center";
+
+  const centerLabel = document.createElement("p");
+  centerLabel.className = "cost-donut-center-label";
+  centerLabel.textContent = translatePhrase("Total Cost");
+
+  const centerValue = document.createElement("p");
+  centerValue.className = "cost-donut-center-value";
+  centerValue.textContent = formatMoney(totalCost);
+
+  center.append(centerLabel, centerValue);
+  donut.append(center);
+  wrapper.append(donut);
+
+  const legend = document.createElement("div");
+  legend.className = "cost-legend-grid";
+  positiveEntries.forEach((entry) => {
+    legend.append(createBreakdownLegendItem(entry));
+  });
+  wrapper.append(legend);
+
+  if (creditEntries.length > 0) {
+    const divider = document.createElement("hr");
+    divider.className = "cost-credits-divider";
+    wrapper.append(divider);
+
+    const credits = document.createElement("div");
+    credits.className = "cost-credits-list";
+    creditEntries.forEach((entry) => {
+      credits.append(createBreakdownLegendItem(entry, { signed: true }));
+    });
+    wrapper.append(credits);
+  }
+
+  node.append(wrapper);
+}
+
+function createMeatCostBreakdown(costBreakdown, processingKey) {
+  return {
+    chickPurchase: costBreakdown.chickPurchase ?? 0,
+    brooding: costBreakdown.brooding ?? 0,
+    feed: costBreakdown.feed ?? 0,
+    infrastructure: costBreakdown.infrastructure ?? 0,
+    fieldLabor: costBreakdown.fieldLabor ?? 0,
+    feedPickup: costBreakdown.feedPickup ?? 0,
+    [processingKey]: costBreakdown[processingKey] ?? 0,
+  };
+}
+
+// ─── Form field factories ────────────────────────────────────────────────────
+
+/**
+ * Build a labelled number input row, optionally with a synchronised range
+ * slider when field.control === "slider+number".
+ *
+ * The number input and slider (if present) stay in sync: changing either
+ * clamps the value to [min, max], snaps to `step`, then calls `onChange`
+ * only when the value actually changes.
+ *
+ * @param {{ key: string, label: string, min: number, max: number, step: number,
+ *           prefix?: string, suffix?: string, control?: string }} field
+ * @param {number} currentValue
+ * @param {(value: number) => void} onChange
+ * @returns {HTMLDivElement}
+ */
+function createNumberField(field, currentValue, onChange) {
+  const row = document.createElement("div");
+  row.className = "field";
+  const fieldId = createFieldId(field.key ?? "input");
+  const controlMode = getFieldControlMode(field);
+  let syncedValue = normalizeFieldValue(field, currentValue, 0);
+
+  const label = document.createElement("label");
+  label.id = `${fieldId}-label`;
+  label.htmlFor = fieldId;
+  label.textContent = field.label;
+
+  const control = document.createElement("div");
+  control.className = "field-control";
+  if (controlMode === "slider+number") {
+    control.classList.add("field-control--slider");
+  }
+
+  const numberControl = document.createElement("div");
+  numberControl.className = "field-number-control";
+
+  if (field.prefix) {
+    const prefix = document.createElement("span");
+    prefix.className = "affix";
+    prefix.textContent = field.prefix;
+    numberControl.append(prefix);
+  }
+
+  const input = document.createElement("input");
+  input.id = fieldId;
+  input.name = field.key;
+  input.type = "number";
+  input.inputMode = "decimal";
+  input.min = String(field.min);
+  input.max = String(field.max);
+  input.step = String(field.step);
+  input.value = String(syncedValue);
+  numberControl.append(input);
+
+  if (field.suffix) {
+    const suffix = document.createElement("span");
+    suffix.className = "affix";
+    suffix.textContent = translatePhrase(field.suffix);
+    numberControl.append(suffix);
+  }
+  control.append(numberControl);
+
+  let slider = null;
+  if (controlMode === "slider+number") {
+    slider = document.createElement("input");
+    slider.className = "field-slider";
+    slider.type = "range";
+    slider.min = String(field.min);
+    slider.max = String(field.max);
+    slider.step = String(field.step);
+    slider.value = String(syncedValue);
+    slider.setAttribute("aria-labelledby", label.id);
+    control.append(slider);
+  }
+
+  function syncControls(rawValue) {
+    const nextValue = normalizeFieldValue(field, rawValue, syncedValue);
+    const hasChanged = nextValue !== syncedValue;
+    syncedValue = nextValue;
+    input.value = String(nextValue);
+    if (slider) {
+      slider.value = String(nextValue);
+    }
+    if (hasChanged) {
+      onChange(nextValue);
+    }
+  }
+
+  input.addEventListener("input", () => {
+    syncControls(input.value);
+  });
+
+  if (slider) {
+    slider.addEventListener("input", () => {
+      syncControls(slider.value);
+    });
+  }
+
+  row.append(label, control);
+  return row;
+}
+
+/**
+ * Build a labelled <select> field row.
+ * @param {{ label: string, options: Array<{value: unknown, label: string}>,
+ *           value: unknown, onChange: (value: string) => void }} params
+ * @returns {HTMLDivElement}
+ */
+function createSelectField({ label, options, value, onChange }) {
+  const row = document.createElement("div");
+  row.className = "field";
+  const fieldId = createFieldId(label);
+
+  const labelNode = document.createElement("label");
+  labelNode.htmlFor = fieldId;
+  labelNode.textContent = label;
+
+  const control = document.createElement("div");
+  control.className = "field-control";
+  const select = document.createElement("select");
+  select.id = fieldId;
+  options.forEach((option) => {
+    const element = document.createElement("option");
+    element.value = String(option.value);
+    element.textContent = option.label;
+    if (String(option.value) === String(value)) {
+      element.selected = true;
+    }
+    select.append(element);
+  });
+  select.addEventListener("change", () => onChange(select.value));
+  control.append(select);
+  row.append(labelNode, control);
+  return row;
+}
+
+/**
+ * Render a list of fields grouped into collapsible category sections.
+ * Each category section has a toggle button; its content is shown/hidden via
+ * `hidden` based on whether the category key is in `openCategories`.
+ *
+ * @param {HTMLElement} node - Container to render into (cleared on each call).
+ * @param {Array} fields - Field definitions from calculators.mjs.
+ * @param {Record<string, number>} state - Current input values.
+ * @param {(key: string, value: number) => void} onUpdate
+ * @param {{ openCategories?: Set<string>, onToggleCategory?: (cat: string) => void }} [options]
+ */
+function renderGroupedFields(
+  node,
+  fields,
+  state,
+  onUpdate,
+  { openCategories = new Set(), onToggleCategory = () => {} } = {},
+) {
+  clearNode(node);
+
+  const grouped = new Map();
+  fields.forEach((field) => {
+    if (!grouped.has(field.category)) {
+      grouped.set(field.category, []);
+    }
+    grouped.get(field.category).push(field);
+  });
+
+  grouped.forEach((categoryFields, category) => {
+    const section = document.createElement("section");
+    section.className = "category";
+    const isOpen = openCategories.has(category);
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "category-toggle";
+    toggle.setAttribute("aria-expanded", String(isOpen));
+    toggle.textContent = translatePhrase(
+      CATEGORY_TITLES[category] ?? humanizeKey(category),
+    );
+    toggle.addEventListener("click", () => {
+      onToggleCategory(category);
+    });
+    section.append(toggle);
+
+    const content = document.createElement("div");
+    content.className = "category-content";
+    content.hidden = !isOpen;
+
+    categoryFields.forEach((field) => {
+      const translatedField = {
+        ...field,
+        label: translatePhrase(field.label),
+      };
+      const row = createNumberField(
+        translatedField,
+        state[field.key],
+        (value) => onUpdate(field.key, value),
+      );
+      content.append(row);
+    });
+    section.append(content);
+
+    node.append(section);
+  });
+}
+
+// ─── Output rendering ────────────────────────────────────────────────────────
+
+/**
+ * Build a single metric card for the hero summary area.
+ * @param {string} label
+ * @param {string} value
+ * @param {{ primary?: boolean, overline?: string|null, unit?: string|null }} [options]
+ * @returns {HTMLElement}
+ */
+function createSummaryMetricCard(
+  label,
+  value,
+  { primary = false, overline = null, unit = null } = {},
+) {
+  const card = document.createElement("article");
+  card.className = primary
+    ? "hero-summary-card hero-summary-card--primary"
+    : "hero-summary-card";
+  if (overline) {
+    const overlineNode = document.createElement("p");
+    overlineNode.className = "hero-summary-overline";
+    overlineNode.textContent = overline;
+    card.append(overlineNode);
+  }
+
+  const labelNode = document.createElement("p");
+  labelNode.className = "hero-summary-label";
+  labelNode.textContent = label;
+
+  const valueNode = document.createElement("p");
+  valueNode.className = "hero-summary-value";
+  valueNode.textContent = value;
+  card.append(labelNode, valueNode);
+  if (unit) {
+    const unitNode = document.createElement("p");
+    unitNode.className = "hero-summary-unit";
+    unitNode.textContent = unit;
+    card.append(unitNode);
+  }
+  return card;
+}
+
+function createProductionSummary(rows) {
+  const section = document.createElement("section");
+  section.className = "production-summary";
+
+  const heading = document.createElement("p");
+  heading.className = "production-summary-heading";
+  heading.textContent = translatePhrase("Production Summary");
+  section.append(heading);
+
+  rows.forEach(({ label, value }) => {
+    const row = document.createElement("div");
+    row.className = "production-summary-row";
+    const labelNode = document.createElement("p");
+    labelNode.className = "production-summary-label";
+    labelNode.textContent = label;
+    const valueNode = document.createElement("p");
+    valueNode.className = "production-summary-value";
+    valueNode.textContent = value;
+    row.append(labelNode, valueNode);
+    section.append(row);
+  });
+
+  return section;
+}
+function createProcessingSummaryBlock(title, rows) {
+  const block = document.createElement("section");
+  block.className = "processing-summary-block";
+
+  const heading = document.createElement("p");
+  heading.className = "processing-summary-heading";
+  heading.textContent = title;
+  block.append(heading);
+
+  rows.forEach(({ label, value }) => {
+    const row = document.createElement("div");
+    row.className = "processing-summary-row";
+
+    const labelNode = document.createElement("p");
+    labelNode.className = "processing-summary-label";
+    labelNode.textContent = label;
+
+    const valueNode = document.createElement("p");
+    valueNode.className = "processing-summary-value";
+    valueNode.textContent = value;
+
+    row.append(labelNode, valueNode);
+    block.append(row);
+  });
+
+  return block;
+}
+
+function renderEggOutputSummary(node, result) {
+  clearNode(node);
+
+  const hero = document.createElement("section");
+  hero.className = "hero-summary";
+  hero.append(
+    createSummaryMetricCard(
+      translatePhrase("Recommended Price"),
+      formatMoney(result.pricePerDozen),
+      {
+        primary: true,
+        unit: translatePhrase("Per Dozen"),
+      },
+    ),
+  );
+  const grossMarginPercent =
+    result.pricePerDozen > 0
+      ? (result.profitPerDozen / result.pricePerDozen) * 100
+      : 0;
+
+  const supporting = document.createElement("div");
+  supporting.className = "hero-summary-grid";
+  supporting.append(
+    createSummaryMetricCard(
+      translatePhrase("Cost per Dozen"),
+      formatMoney(result.costPerDozen),
+      { overline: "💲" },
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Gross Margin per Dozen"),
+      formatMoney(result.profitPerDozen),
+      {
+        overline: `${formatGroupedNumber(grossMarginPercent, 0)}%`,
+      },
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Dozen/Hen/Year"),
+      formatGroupedNumber(result.averageDozenPerHenPerYear, 1),
+      { overline: "📊" },
+    ),
+  );
+  hero.append(supporting);
+  node.append(hero);
+
+  node.append(
+    createProductionSummary([
+      {
+        label: translatePhrase("Average Dozen per Hen per Year"),
+        value: formatGroupedNumber(result.averageDozenPerHenPerYear, 1),
+      },
+      {
+        label: translatePhrase("Total Eggs per Hen (2 years)"),
+        value: formatGroupedNumber(result.totalEggsPerHen, 0),
+      },
+      {
+        label: translatePhrase("Annual Revenue per Hen"),
+        value: formatMoney(
+          result.pricePerDozen * result.averageDozenPerHenPerYear,
+        ),
+      },
+    ]),
+  );
+}
+
+function renderMeatOutputSummary(node, state, result) {
+  clearNode(node);
+
+  const hero = document.createElement("section");
+  hero.className = "hero-summary";
+  const recommendationHeading = document.createElement("p");
+  recommendationHeading.className = "hero-summary-section-label";
+  recommendationHeading.textContent = translatePhrase(
+    "Recommended Price per Pound",
+  );
+  hero.append(recommendationHeading);
+
+  const primaryGrid = document.createElement("div");
+  primaryGrid.className = "hero-summary-primary-grid";
+  primaryGrid.append(
+    createSummaryMetricCard(
+      translatePhrase("Sent Out Processing"),
+      formatMoney(result.pricePerPoundSentOut),
+      {
+        primary: true,
+        unit: translatePhrase("per pound"),
+      },
+    ),
+    createSummaryMetricCard(
+      translatePhrase("DIY Processing"),
+      formatMoney(result.pricePerPoundDIY),
+      {
+        primary: true,
+        unit: translatePhrase("per pound"),
+      },
+    ),
+  );
+  hero.append(primaryGrid);
+  const processingGrid = document.createElement("div");
+  processingGrid.className = "processing-summary-grid";
+  processingGrid.append(
+    createProcessingSummaryBlock(translatePhrase("Sent Out"), [
+      {
+        label: translatePhrase("Cost per Bird"),
+        value: formatMoney(result.totalCostPerBirdSentOut),
+      },
+      {
+        label: translatePhrase("Cost per Pound"),
+        value: formatMoney(result.costPerPoundSentOut),
+      },
+      {
+        label: translatePhrase("Gross Margin per Pound"),
+        value: formatMoney(
+          result.pricePerPoundSentOut - result.costPerPoundSentOut,
+        ),
+      },
+    ]),
+    createProcessingSummaryBlock(translatePhrase("DIY"), [
+      {
+        label: translatePhrase("Cost per Bird"),
+        value: formatMoney(result.totalCostPerBirdDIY),
+      },
+      {
+        label: translatePhrase("Cost per Pound"),
+        value: formatMoney(result.costPerPoundDIY),
+      },
+      {
+        label: translatePhrase("Gross Margin per Pound"),
+        value: formatMoney(result.pricePerPoundDIY - result.costPerPoundDIY),
+      },
+    ]),
+  );
+  hero.append(processingGrid);
+
+  const strip = document.createElement("div");
+  strip.className = "hero-summary-strip";
+  strip.append(
+    createSummaryMetricCard(
+      translatePhrase("Gross Margin"),
+      `${formatGroupedNumber(state.desiredMargin, 0)}%`,
+    ),
+    createSummaryMetricCard(
+      translatePhrase("Avg. Weight"),
+      `${formatGroupedNumber(state.averageWeight, 1)} ${translatePhrase(
+        "lbs",
+      )}`,
+    ),
+  );
+  hero.append(strip);
+  node.append(hero);
+
+  node.append(
+    createProductionSummary([
+      {
+        label: translatePhrase("Birds Finished (Annual)"),
+        value: formatGroupedNumber(state.birdsFinished, 0),
+      },
+      {
+        label: translatePhrase("Avg. Dressed Weight"),
+        value: `${formatGroupedNumber(
+          state.averageWeight,
+          1,
+        )} ${translatePhrase("lbs")}`,
+      },
+      {
+        label: translatePhrase("Total Meat (Annual)"),
+        value: `${formatGroupedNumber(
+          state.birdsFinished * state.averageWeight,
+          1,
+        )} ${translatePhrase("lbs")}`,
+      },
+    ]),
+  );
+}
+
+// ─── Page initialisers ───────────────────────────────────────────────────────
+
+/**
+ * Wire up the egg price calculator page.
+ * Expects DOM elements: #fields, #summary, #breakdown, #reset-defaults.
+ * Manages accordion category state and breakdown toggle state locally.
+ */
+function initEggPage() {
+  const fieldsNode = document.getElementById("fields");
+  const summaryNode = document.getElementById("summary");
+  const breakdownNode = document.getElementById("breakdown");
+  const resetButton = document.getElementById("reset-defaults");
+
+  let state = { ...EGG_DEFAULTS };
+  const openCategories = new Set();
+  let isBreakdownOpen = false;
+
+  const breakdownToggle = document.createElement("button");
+  breakdownToggle.type = "button";
+  breakdownToggle.className = "breakdown-toggle";
+  if (breakdownNode?.parentElement) {
+    breakdownNode.parentElement.insertBefore(breakdownToggle, breakdownNode);
+  }
+  breakdownToggle.addEventListener("click", () => {
+    isBreakdownOpen = !isBreakdownOpen;
+    phCapture(
+      isBreakdownOpen ? "breakdown_toggle_opened" : "breakdown_toggle_closed",
+      { calculator_type: "egg" },
+    );
+    renderBreakdownVisibility();
+  });
+
+  function renderBreakdownVisibility() {
+    breakdownNode.hidden = !isBreakdownOpen;
+    breakdownToggle.classList.toggle("is-open", isBreakdownOpen);
+    breakdownToggle.setAttribute("aria-expanded", String(isBreakdownOpen));
+    breakdownToggle.textContent = translatePhrase("Cost Breakdown");
+  }
+
+  function toggleCategory(category) {
+    if (openCategories.has(category)) {
+      openCategories.delete(category);
+    } else {
+      openCategories.add(category);
+    }
+    buildForm();
+  }
+
+  function updateOutputs() {
+    const result = computeEggPricing(state);
+    renderEggOutputSummary(summaryNode, result);
+
+    renderCostBreakdownChart(breakdownNode, {
+      costBreakdown: result.costBreakdown,
+      totalCost: result.costPerDozen,
+    });
+    renderBreakdownVisibility();
+  }
+
+  function updateField(key, value) {
+    state = { ...state, [key]: value };
+    updateOutputs();
+  }
+
+  function buildForm() {
+    renderGroupedFields(fieldsNode, EGG_VISIBLE_FIELDS, state, updateField, {
+      openCategories,
+      onToggleCategory: toggleCategory,
+    });
+  }
+
+  resetButton.addEventListener("click", () => {
+    state = { ...EGG_DEFAULTS };
+    phCapture("calculator_reset", { calculator_type: "egg" });
+    buildForm();
+    updateOutputs();
+  });
+
+  onLanguageChange(() => {
+    buildForm();
+    updateOutputs();
+  });
+
+  buildForm();
+  updateOutputs();
+}
+
+/**
+ * Wire up the meat chicken price calculator page.
+ * Expects DOM elements: #fields, #summary, #breakdown, #reset-defaults.
+ * Renders two breakdown subsections (Sent Out / DIY) inside #breakdown.
+ */
+function initMeatPage() {
+  const fieldsNode = document.getElementById("fields");
+  const summaryNode = document.getElementById("summary");
+  const breakdownNode = document.getElementById("breakdown");
+  const resetButton = document.getElementById("reset-defaults");
+
+  let state = { ...MEAT_DEFAULTS };
+  const openCategories = new Set();
+  let isBreakdownOpen = false;
+
+  const breakdownToggle = document.createElement("button");
+  breakdownToggle.type = "button";
+  breakdownToggle.className = "breakdown-toggle";
+  if (breakdownNode?.parentElement) {
+    breakdownNode.parentElement.insertBefore(breakdownToggle, breakdownNode);
+  }
+  breakdownToggle.addEventListener("click", () => {
+    isBreakdownOpen = !isBreakdownOpen;
+    phCapture(
+      isBreakdownOpen ? "breakdown_toggle_opened" : "breakdown_toggle_closed",
+      { calculator_type: "meat" },
+    );
+    renderBreakdownVisibility();
+  });
+
+  function renderBreakdownVisibility() {
+    breakdownNode.hidden = !isBreakdownOpen;
+    breakdownToggle.classList.toggle("is-open", isBreakdownOpen);
+    breakdownToggle.setAttribute("aria-expanded", String(isBreakdownOpen));
+    breakdownToggle.textContent = translatePhrase("Cost Breakdown");
+  }
+
+  function toggleCategory(category) {
+    if (openCategories.has(category)) {
+      openCategories.delete(category);
+    } else {
+      openCategories.add(category);
+    }
+    buildForm();
+  }
+
+  function updateOutputs() {
+    const result = computeMeatPricing(state);
+    renderMeatOutputSummary(summaryNode, state, result);
+
+    clearNode(breakdownNode);
+
+    const sentOutSection = document.createElement("section");
+    sentOutSection.className = "cost-breakdown-subsection";
+
+    const sentOutTitle = document.createElement("h4");
+    sentOutTitle.className = "cost-breakdown-subtitle";
+    sentOutTitle.textContent = translatePhrase("Processing Sent Out");
+    sentOutSection.append(sentOutTitle);
+
+    const sentOutChartNode = document.createElement("div");
+    sentOutSection.append(sentOutChartNode);
+
+    renderCostBreakdownChart(sentOutChartNode, {
+      costBreakdown: createMeatCostBreakdown(
+        result.costBreakdown,
+        "processingSentOut",
+      ),
+      totalCost: result.totalCostPerBirdSentOut,
+    });
+    breakdownNode.append(sentOutSection);
+
+    const diySection = document.createElement("section");
+    diySection.className = "cost-breakdown-subsection";
+
+    const diyTitle = document.createElement("h4");
+    diyTitle.className = "cost-breakdown-subtitle";
+    diyTitle.textContent = translatePhrase("Processing DIY");
+    diySection.append(diyTitle);
+
+    const diyChartNode = document.createElement("div");
+    diySection.append(diyChartNode);
+
+    renderCostBreakdownChart(diyChartNode, {
+      costBreakdown: createMeatCostBreakdown(
+        result.costBreakdown,
+        "processingDIY",
+      ),
+      totalCost: result.totalCostPerBirdDIY,
+    });
+    breakdownNode.append(diySection);
+    renderBreakdownVisibility();
+  }
+
+  function updateField(key, value) {
+    state = { ...state, [key]: value };
+    updateOutputs();
+  }
+
+  function buildForm() {
+    renderGroupedFields(fieldsNode, MEAT_FIELDS, state, updateField, {
+      openCategories,
+      onToggleCategory: toggleCategory,
+    });
+  }
+
+  resetButton.addEventListener("click", () => {
+    state = { ...MEAT_DEFAULTS };
+    phCapture("calculator_reset", { calculator_type: "meat" });
+    buildForm();
+    updateOutputs();
+  });
+
+  onLanguageChange(() => {
+    buildForm();
+    updateOutputs();
+  });
+
+  buildForm();
+  updateOutputs();
+}
+
+/**
+ * Deep-clone STOCK_MIXED_DEFAULTS so each page init gets its own mutable copy
+ * of the nested animals object.
+ * @returns {typeof STOCK_MIXED_DEFAULTS}
+ */
+function cloneMixedDefaults() {
+  return {
+    ...STOCK_MIXED_DEFAULTS,
+    animals: JSON.parse(JSON.stringify(STOCK_MIXED_DEFAULTS.animals)),
+  };
+}
+
+/**
+ * Wire up the stock density calculator page.
+ * Expects DOM elements: #stock-mode, #fields, #summary, #breakdown, #reset-defaults.
+ * Manages single/mixed mode state locally; #breakdown is permanently hidden
+ * (stocking results use summary panels only, no donut chart).
+ */
+function initStockPage() {
+  const modeNode = document.getElementById("stock-mode");
+  const fieldsNode = document.getElementById("fields");
+  const summaryNode = document.getElementById("summary");
+  const breakdownNode = document.getElementById("breakdown");
+  const resetButton = document.getElementById("reset-defaults");
+  breakdownNode.hidden = true;
+
+  let mode = "single";
+  let singleState = { ...STOCK_SINGLE_DEFAULTS };
+  let mixedState = cloneMixedDefaults();
+
+  function renderResetLabel() {
+    resetButton.textContent = translatePhrase("Reset");
+  }
+
+  function renderModeToggle() {
+    clearNode(modeNode);
+    const group = document.createElement("div");
+    group.className = "mode-tabs";
+    group.setAttribute("role", "tablist");
+
+    const modes = [
+      { value: "single", label: translatePhrase("Single Class") },
+      { value: "mixed", label: translatePhrase("Mixed Herd") },
+    ];
+
+    modes.forEach((option) => {
+      const button = document.createElement("button");
+      const isActive = option.value === mode;
+      button.type = "button";
+      button.className = "mode-tab";
+      button.textContent = option.label;
+      button.setAttribute("role", "tab");
+      button.setAttribute("aria-selected", String(isActive));
+      button.setAttribute("aria-pressed", String(isActive));
+      button.classList.toggle("is-active", isActive);
+      button.addEventListener("click", () => {
+        if (mode === option.value) {
+          return;
+        }
+        mode = option.value;
+        phCapture("stock_density_mode_changed", { mode });
+        renderModeToggle();
+        renderFields();
+        renderOutputs();
+      });
+      group.append(button);
+    });
+
+    modeNode.append(group);
+  }
+
+  function renderFields() {
+    clearNode(fieldsNode);
+
+    const activeState = mode === "single" ? singleState : mixedState;
+
+    fieldsNode.append(
+      createNumberField(
+        {
+          key: "forageHeight",
+          label: translatePhrase("Average Forage Height"),
+          min: 1,
+          max: 24,
+          step: 0.5,
+          control: STOCK_FIELD_CONTROLS.forageHeight,
+          suffix: "in",
+        },
+        activeState.forageHeight,
+        (value) => {
+          if (mode === "single")
+            singleState = { ...singleState, forageHeight: value };
+          else mixedState = { ...mixedState, forageHeight: value };
+          renderOutputs();
+        },
+      ),
+    );
+
+    fieldsNode.append(
+      createSelectField({
+        label: translatePhrase("Ground Coverage Density"),
+        value: activeState.forageDensity,
+        options: Object.entries(FORAGE_DENSITY_LEVELS).map(
+          ([value, config]) => ({
+            value,
+            label: translatePhrase(config.label),
+          }),
+        ),
+        onChange: (value) => {
+          if (mode === "single")
+            singleState = {
+              ...singleState,
+              forageDensity: Number.parseInt(value, 10),
+            };
+          else
+            mixedState = {
+              ...mixedState,
+              forageDensity: Number.parseInt(value, 10),
+            };
+          renderOutputs();
+        },
+      }),
+    );
+
+    fieldsNode.append(
+      createNumberField(
+        {
+          key: "utilizationPercent",
+          label: translatePhrase("Forage Utilization Goal"),
+          min: 1,
+          max: 100,
+          step: 1,
+          control: STOCK_FIELD_CONTROLS.utilizationPercent,
+          suffix: "%",
+        },
+        activeState.utilizationPercent,
+        (value) => {
+          if (mode === "single")
+            singleState = { ...singleState, utilizationPercent: value };
+          else mixedState = { ...mixedState, utilizationPercent: value };
+          renderOutputs();
+        },
+      ),
+    );
+
+    fieldsNode.append(
+      createNumberField(
+        {
+          key: "paddockSideLength",
+          label: translatePhrase("Paddock Side Length"),
+          min: 1,
+          max: 3000,
+          step: 1,
+          control: STOCK_FIELD_CONTROLS.paddockSideLength,
+          suffix: "ft",
+        },
+        activeState.paddockSideLength,
+        (value) => {
+          if (mode === "single")
+            singleState = { ...singleState, paddockSideLength: value };
+          else mixedState = { ...mixedState, paddockSideLength: value };
+          renderOutputs();
+        },
+      ),
+    );
+
+    fieldsNode.append(
+      createNumberField(
+        {
+          key: "movesPerDay",
+          label: translatePhrase("Paddock Moves per Day"),
+          min: 1,
+          max: 24,
+          step: 1,
+          control: STOCK_FIELD_CONTROLS.movesPerDay,
+        },
+        activeState.movesPerDay,
+        (value) => {
+          if (mode === "single")
+            singleState = { ...singleState, movesPerDay: value };
+          else mixedState = { ...mixedState, movesPerDay: value };
+          renderOutputs();
+        },
+      ),
+    );
+
+    if (mode === "single") {
+      fieldsNode.append(
+        createNumberField(
+          {
+            key: "numberOfHead",
+            label: translatePhrase("Number of Head"),
+            min: 0,
+            max: 50000,
+            step: 1,
+            control: STOCK_FIELD_CONTROLS.numberOfHead,
+          },
+          singleState.numberOfHead,
+          (value) => {
+            singleState = { ...singleState, numberOfHead: value };
+            renderOutputs();
+          },
+        ),
+      );
+
+      fieldsNode.append(
+        createNumberField(
+          {
+            key: "averageWeight",
+            label: translatePhrase("Average Weight"),
+            min: 1,
+            max: 5000,
+            step: 1,
+            control: STOCK_FIELD_CONTROLS.averageWeight,
+            suffix: "lbs",
+          },
+          singleState.averageWeight,
+          (value) => {
+            singleState = { ...singleState, averageWeight: value };
+            renderOutputs();
+          },
+        ),
+      );
+
+      fieldsNode.append(
+        createSelectField({
+          label: translatePhrase("Animal Class"),
+          value: singleState.animalClass,
+          options: Object.entries(ANIMAL_CLASSES).map(([value, details]) => ({
+            value,
+            label: translatePhrase(details.label),
+          })),
+          onChange: (value) => {
+            singleState = { ...singleState, animalClass: value };
+            renderOutputs();
+          },
+        }),
+      );
+    } else {
+      const section = document.createElement("section");
+      section.className = "category";
+
+      const title = document.createElement("h3");
+      title.textContent = translatePhrase("Animal Groups");
+      section.append(title);
+
+      Object.entries(ANIMAL_CLASSES).forEach(([animalClass, details]) => {
+        section.append(
+          createNumberField(
+            {
+              key: `${animalClass}-head`,
+              label: `${translatePhrase(details.label)}: ${translatePhrase(
+                "Number of Head",
+              )}`,
+              min: 0,
+              max: 50000,
+              step: 1,
+            },
+            mixedState.animals[animalClass].numberOfHead,
+            (value) => {
+              mixedState = {
+                ...mixedState,
+                animals: {
+                  ...mixedState.animals,
+                  [animalClass]: {
+                    ...mixedState.animals[animalClass],
+                    numberOfHead: value,
+                  },
+                },
+              };
+              renderOutputs();
+            },
+          ),
+        );
+
+        section.append(
+          createNumberField(
+            {
+              key: `${animalClass}-weight`,
+              label: `${translatePhrase(details.label)}: ${translatePhrase(
+                "Average Weight",
+              )}`,
+              min: 1,
+              max: 5000,
+              step: 1,
+              suffix: "lbs",
+            },
+            mixedState.animals[animalClass].averageWeight,
+            (value) => {
+              mixedState = {
+                ...mixedState,
+                animals: {
+                  ...mixedState.animals,
+                  [animalClass]: {
+                    ...mixedState.animals[animalClass],
+                    averageWeight: value,
+                  },
+                },
+              };
+              renderOutputs();
+            },
+          ),
+        );
+      });
+
+      fieldsNode.append(section);
+    }
+  }
+
+  function renderStockPanels(summaryTarget, result) {
+    clearNode(summaryTarget);
+
+    const panels = document.createElement("div");
+    panels.className = "stock-panels";
+
+    const heroCard = document.createElement("div");
+    heroCard.className = "stock-hero-card";
+    const heroLabel = document.createElement("p");
+    heroLabel.className = "stock-hero-label";
+    heroLabel.textContent = translatePhrase("Daily Paddock Size");
+    const heroValue = document.createElement("p");
+    heroValue.className = "stock-hero-value";
+    heroValue.textContent = `${formatGroupedNumber(
+      result.acresNeededPerDay,
+      2,
+    )} ${translatePhrase("acres")}`;
+    const heroSub = document.createElement("p");
+    heroSub.className = "stock-hero-sub";
+    heroSub.textContent = `(${formatGroupedNumber(
+      result.squareFeet,
+      0,
+    )} ${translatePhrase("sq ft")})`;
+    heroCard.append(heroLabel, heroValue, heroSub);
+    panels.append(heroCard);
+
+    function addPanel(title, items) {
+      const card = document.createElement("div");
+      card.className = "stock-info-card";
+      const heading = document.createElement("p");
+      heading.className = "stock-info-heading";
+      heading.textContent = title;
+      card.append(heading);
+      const grid = document.createElement("div");
+      grid.className = "stock-info-grid";
+      items.forEach(({ label, value }) => {
+        const item = document.createElement("div");
+        item.className = "stock-info-item";
+        const itemLabel = document.createElement("p");
+        itemLabel.className = "stock-info-item-label";
+        itemLabel.textContent = label;
+        const itemValue = document.createElement("p");
+        itemValue.className = "stock-info-item-value";
+        itemValue.textContent = value;
+        item.append(itemLabel, itemValue);
+        grid.append(item);
+      });
+      card.append(grid);
+      panels.append(card);
+    }
+
+    addPanel(translatePhrase("Forage Analysis"), [
+      {
+        label: translatePhrase("Forage Available"),
+        value: `${formatGroupedNumber(
+          result.forageLbsPerAcre,
+          0,
+        )} ${translatePhrase("lbs/acre")}`,
+      },
+      {
+        label: translatePhrase("Dry Matter Available"),
+        value: `${formatGroupedNumber(
+          result.dryMatterAvailable,
+          0,
+        )} ${translatePhrase("lbs/acre")}`,
+      },
+    ]);
+
+    const dmNeededValue =
+      result.dryMatterNeededPerDay != null
+        ? result.dryMatterNeededPerDay
+        : result.totalDryMatterNeeded;
+    addPanel(translatePhrase("Herd Requirements"), [
+      {
+        label: translatePhrase("Daily Dry Matter Need"),
+        value: `${formatGroupedNumber(dmNeededValue, 0)} ${translatePhrase(
+          "lbs",
+        )}`,
+      },
+      {
+        label: translatePhrase("Stocking Density"),
+        value: `${formatGroupedNumber(
+          result.stockingDensityPerAcre,
+          0,
+        )} ${translatePhrase("lbs/acre")}`,
+      },
+    ]);
+
+    const setSide =
+      mode === "single"
+        ? singleState.paddockSideLength
+        : mixedState.paddockSideLength;
+    const dimensionsCard = document.createElement("div");
+    dimensionsCard.className = "stock-info-card";
+    const dimensionsHeading = document.createElement("p");
+    dimensionsHeading.className = "stock-info-heading";
+    dimensionsHeading.textContent = translatePhrase("Paddock Dimensions");
+    dimensionsCard.append(dimensionsHeading);
+
+    const dimensionsRow = document.createElement("div");
+    dimensionsRow.className = "stock-dimensions-row";
+
+    const setBlock = document.createElement("div");
+    setBlock.className = "stock-dimensions-block";
+    const setValue = document.createElement("p");
+    setValue.className = "stock-dimensions-value";
+    setValue.textContent = formatGroupedNumber(setSide, 0);
+    const setLabel = document.createElement("p");
+    setLabel.className = "stock-dimensions-label";
+    setLabel.textContent = translatePhrase("ft (set)");
+    setBlock.append(setValue, setLabel);
+
+    const separator = document.createElement("p");
+    separator.className = "stock-dimensions-separator";
+    separator.textContent = "×";
+
+    const calcBlock = document.createElement("div");
+    calcBlock.className = "stock-dimensions-block";
+    const calcValue = document.createElement("p");
+    calcValue.className = "stock-dimensions-value";
+    calcValue.textContent = formatGroupedNumber(result.paddockWidth, 0);
+    const calcLabel = document.createElement("p");
+    calcLabel.className = "stock-dimensions-label";
+    calcLabel.textContent = translatePhrase("ft (calculated)");
+    calcBlock.append(calcValue, calcLabel);
+
+    dimensionsRow.append(setBlock, separator, calcBlock);
+    dimensionsCard.append(dimensionsRow);
+    panels.append(dimensionsCard);
+
+    summaryTarget.append(panels);
+  }
+
+  function renderOutputs() {
+    if (mode === "single") {
+      const result = computeStockSingle(singleState);
+      renderStockPanels(summaryNode, result);
+    } else {
+      const result = computeStockMixed(mixedState);
+      renderStockPanels(summaryNode, result);
+    }
+  }
+
+  resetButton.addEventListener("click", () => {
+    mode = "single";
+    singleState = { ...STOCK_SINGLE_DEFAULTS };
+    mixedState = cloneMixedDefaults();
+    phCapture("calculator_reset", { calculator_type: "stock" });
+    renderModeToggle();
+    renderFields();
+    renderOutputs();
+  });
+
+  onLanguageChange(() => {
+    renderResetLabel();
+    renderModeToggle();
+    renderFields();
+    renderOutputs();
+  });
+  renderResetLabel();
+
+  renderModeToggle();
+  renderFields();
+  renderOutputs();
+}
+
+// ─── Feedback modal ───────────────────────────────────────────────────────────
+
+/**
+ * Inject a floating Feedback button and modal that submits free-text
+ * responses to PostHog as a survey event.
+ *
+ * Falls back gracefully if PostHog is not loaded (the submit just no-ops).
+ */
+function initFeedbackButton() {
+  const SURVEY_ID = "019c0dbb-3fb4-0000-cef7-25d59f3b5928";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "feedback-btn";
+  btn.setAttribute("aria-label", "Give feedback");
+  btn.textContent = "Feedback";
+  document.body.appendChild(btn);
+
+  const overlay = document.createElement("div");
+  overlay.className = "feedback-modal-overlay";
+  overlay.hidden = true;
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Send feedback");
+
+  const modal = document.createElement("div");
+  modal.className = "feedback-modal";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "feedback-modal-close";
+  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.textContent = "\u00d7";
+
+  const heading = document.createElement("h3");
+  heading.className = "feedback-modal-heading";
+  heading.textContent = "Share Your Feedback";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "feedback-modal-textarea";
+  textarea.placeholder = "What feedback do you have for us?";
+  textarea.rows = 4;
+
+  const submitBtn = document.createElement("button");
+  submitBtn.type = "button";
+  submitBtn.className = "feedback-modal-submit";
+  submitBtn.textContent = "Send";
+
+  const thanks = document.createElement("p");
+  thanks.className = "feedback-modal-thanks";
+  thanks.hidden = true;
+  thanks.textContent = "Thanks for your feedback!";
+
+  modal.append(closeBtn, heading, textarea, submitBtn, thanks);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  function openModal() {
+    textarea.hidden = false;
+    submitBtn.hidden = false;
+    thanks.hidden = true;
+    textarea.value = "";
+    overlay.hidden = false;
+    textarea.focus();
+  }
+
+  function closeModal() {
+    overlay.hidden = true;
+  }
+
+  btn.addEventListener("click", openModal);
+  closeBtn.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !overlay.hidden) closeModal();
+  });
+
+  submitBtn.addEventListener("click", () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    window.posthog?.capture("survey sent", {
+      $survey_id: SURVEY_ID,
+      $survey_response: text,
+    });
+    textarea.hidden = true;
+    submitBtn.hidden = true;
+    thanks.hidden = false;
+    setTimeout(closeModal, 1800);
+  });
+}
+
+// ─── Entry point ──────────────────────────────────────────────────────────────
+// Dispatch to the correct page init based on the data-calculator attribute
+// set on <body> in each HTML entrypoint.
+
+initLanguageControls();
+
+const page = document.body.dataset.calculator;
+if (page === "egg") {
+  initEggPage();
+} else if (page === "meat") {
+  initMeatPage();
+} else if (page === "stock") {
+  initStockPage();
+}
+
+initFeedbackButton();
